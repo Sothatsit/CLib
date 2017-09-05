@@ -2,7 +2,6 @@
 #define JSON_util_string_h
 
 #include "types.h"
-#include "array.h"
 
 #include <stdbool.h>
 #include <stdarg.h>
@@ -364,42 +363,6 @@ String str_splitAtFirstString(String * remaining, String find);
  * Will return an empty string on failure.
  */
 String str_UCSCodepointToUTF8(u32 codepoint);
-
-
-
-//
-// String Arrays
-//
-
-/*
- * Return string as an Array of chars.
- */
-#define str_toCharArray(string) (arr_charCreate(string.data, string.length));
-
-/*
- * Alias of arr_create for the String data type.
- */
-#define arr_strCreate(data, length) (arr_create(data, length, sizeof(String)))
-
-/*
- * Alias of arr_createOfLength for the String data type.
- */
-#define arr_strCreateOfLength(length) (arr_createOfLength(length, sizeof(String)))
-
-/*
- * Get the String at index in array.
- */
-#define arr_strGet(array, index) (*((String *) arr_getPointer(array, index)))
-
-/*
- * Set the String at index in array to value.
- */
-#define arr_strSet(array, index, value) (*((String *) arr_getPointer(array, index)) = value)
-
-/*
- * Appends value to list, returning whether it was successful.
- */
-bool list_strAppend(List * list, String value);
 
 
 

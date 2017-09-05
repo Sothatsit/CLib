@@ -546,23 +546,6 @@ String str_UCSCodepointToUTF8(u32 codepoint) {
 
 
 //
-// String Arrays
-//
-
-bool list_strAppend(List * list, String value) {
-    String * pointer = list_append(list);
-
-    if(pointer == NULL)
-        return false;
-
-    *pointer = value;
-
-    return true;
-}
-
-
-
-//
 // String Builder
 //
 

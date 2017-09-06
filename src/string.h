@@ -50,13 +50,13 @@
  * Converts {c} to lowercase. If {c} is not uppercase as defined by
  * char_isUppercase, the returned character will be the same.
  */
-#define char_toLowercase(c) (char_isUppercase(c) ? c + ('a' - 'A') : c)
+#define char_toLowercase(c) (char_isUppercase(c) ? (char) (c + ('a' - 'A')) : c)
 
 /*
  * Converts {c} to uppercase. If {c} is not lowercase as defined by
  * char_isLowercase, the returned character will be the same.
  */
-#define char_toUppercase(c) (char_isLowercase(c) ? c - ('a' - 'A') : c)
+#define char_toUppercase(c) (char_isLowercase(c) ? (char) (c - ('a' - 'A')) : c)
 
 
 
@@ -80,30 +80,6 @@ struct String {
      */
     u64 length;
 };
-
-/*
- * Returns the character at {index} in {string}.
- *
- * This does not perform a bounds check.
- */
-#define str_get(string, index) (string.data[index])
-
-/*
- * Set the character at {index} in {string} to {character}.
- *
- * This does not perform a bounds check.
- */
-#define str_set(string, index, character) (string.data[index] = character)
-
-/*
- * Returns a String with length 0.
- */
-#define str_createEmpty() (str_createOfLength(NULL, 0))
-
-/*
- * Returns whether {string} is empty.
- */
-#define str_isEmpty(string) (string.length == 0)
 
 /*
  * Create a String from the C string {data}.
@@ -148,6 +124,16 @@ String str_createCopyOfLength(char * data, u64 length);
  * str_destroy should be used on the returned String when it is no longer being used.
  */
 String str_createUninitialised(u64 length);
+
+/*
+ * Returns a String with length 0.
+ */
+String str_createEmpty();
+
+/*
+ * Returns whether {string} is empty.
+ */
+bool str_isEmpty(String string);
 
 /*
  * Destroy {string}.
@@ -204,12 +190,23 @@ bool str_startsWith(String string, String prefix);
 bool str_endsWith(String string, String suffix);
 
 /*
+ * Returns the character at {index} in {string}.
+ *
+ * If {index} is out of the bounds of {string}, the null character will be returned.
+ */
+char str_get(String string, u64 index);
+
+/*
  * Find the index of the first occurence of {find} in {string}. Will return -1 if {find} is not found.
  */
 s64 str_indexOfChar(String string, char find);
 
 /*
- * Find the index of the first occurence of {find} in {string}. Will return -1 if {find} is not found.
+ * Find the index of the first occurence of {find} in {string}.
+ *
+ * If {find} is empty will return 1 unless {string} is also empty, in which case it will return -1.
+ *
+ * Will return -1 if {find} is not found.
  */
 s64 str_indexOfString(String string, String find);
 
@@ -222,6 +219,8 @@ s64 str_indexOfCharAfterIndex(String string, char find, u64 index);
 
 /*
  * Find the index of the first occurence of {find} after or at {index} in {string}.
+ *
+ * If {find} is empty will return {index} + 1 unless {string} is also empty, in which case it will return -1.
  *
  * Will return -1 if {find} is not found after or at {index}.
  */
@@ -262,13 +261,21 @@ void str_toUppercase(String string);
 void str_toLowercase(String string);
 
 /*
+ * Set the character at {index} in {string} to {character}.
+ *
+ * Returns true if {index} is within the bounds of {string} and the character is set.
+ */
+bool str_set(String string, u64 index, char character);
+
+/*
  * Set the characters in {string} at {index} to the characters in {replacement}.
  *
  * This will modify {string}, if this is unwanted use str_copy beforehand.
  *
- * Will not perform a bounds check to make sure replacement will fit within string.
+ * Will perform a bounds check to ensure that {replacement} will fit completely into {string}.
+ * Returns whether the operation was successful.
  */
-void str_setChars(String string, u64 index, String replacement);
+bool str_setChars(String string, u64 index, String replacement);
 
 /*
  * Replace all occurences of {find} in {string} with {replacement}.

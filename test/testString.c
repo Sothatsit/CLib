@@ -9,72 +9,6 @@
 // Tests
 //
 
-bool test_str_get() {
-    String johnDoe = str_createCopyOfLength("John\0Doe", 8);
-    {
-        assertStrValid(johnDoe);
-
-        assert(str_get(johnDoe, 0) == 'J');
-        assert(str_get(johnDoe, 3) == 'n');
-        assert(str_get(johnDoe, 4) == '\0');
-        assert(str_get(johnDoe, 5) == 'D');
-        assert(str_get(johnDoe, 7) == 'e');
-    }
-    str_destroy(johnDoe);
-
-    return true;
-}
-
-bool test_str_set() {
-    String billy = str_createCopyOfLength("Billy\0Kimberley", 15);
-    String expected = str_createCopy("JillySOimberlNy");
-    {
-        assertStrValid(billy);
-        assertStrValid(expected);
-
-        str_set(billy, 0, 'J');
-        str_set(billy, 5, 'S');
-        str_set(billy, 6, 'O');
-        str_set(billy, 13, 'N');
-
-        assert(str_get(billy, 0) == 'J');
-        assert(str_get(billy, 5) == 'S');
-        assert(str_get(billy, 6) == 'O');
-        assert(str_get(billy, 13) == 'N');
-
-        assert(str_equals(billy, expected));
-    }
-    str_destroy(billy);
-    str_destroy(expected);
-
-    return true;
-}
-
-bool test_str_createEmpty() {
-    String empty = str_createEmpty();
-    {
-        assert(empty.length == 0);
-    }
-    str_destroy(empty);
-
-    return true;
-}
-
-bool test_str_isEmpty() {
-    String empty = str_createEmpty();
-    String nonEmpty = str_createCopy("Some random string");
-    {
-        assertStrValid(nonEmpty);
-
-        assert(str_isEmpty(empty));
-        assert(!str_isEmpty(nonEmpty));
-    }
-    str_destroy(empty);
-    str_destroy(nonEmpty);
-
-    return true;
-}
-
 bool test_str_create() {
     char * data = "Test String Create";
 
@@ -153,6 +87,31 @@ bool test_str_createUninitialised() {
     }
     str_destroy(string);
     str_destroy(expected);
+
+    return true;
+}
+
+bool test_str_createEmpty() {
+    String empty = str_createEmpty();
+    {
+        assert(empty.length == 0);
+    }
+    str_destroy(empty);
+
+    return true;
+}
+
+bool test_str_isEmpty() {
+    String empty = str_createEmpty();
+    String nonEmpty = str_createCopy("Some random string");
+    {
+        assertStrValid(nonEmpty);
+
+        assert(str_isEmpty(empty));
+        assert(!str_isEmpty(nonEmpty));
+    }
+    str_destroy(empty);
+    str_destroy(nonEmpty);
 
     return true;
 }
@@ -308,6 +267,22 @@ bool test_str_endsWith() {
     return true;
 }
 
+bool test_str_get() {
+    String johnDoe = str_createCopyOfLength("John\0Doe", 8);
+    {
+        assertStrValid(johnDoe);
+
+        assert(str_get(johnDoe, 0) == 'J');
+        assert(str_get(johnDoe, 3) == 'n');
+        assert(str_get(johnDoe, 4) == '\0');
+        assert(str_get(johnDoe, 5) == 'D');
+        assert(str_get(johnDoe, 7) == 'e');
+    }
+    str_destroy(johnDoe);
+
+    return true;
+}
+
 bool test_str_indexOfChar() {
     String names = str_createCopyOfLength("Little Finger\0Mance\0Jon\0Tyrrion\0Sansa\0Arya", 42);
     {
@@ -368,9 +343,13 @@ bool test_str_indexOfStringAfterIndex() {
         assertStrValid(littleFinger);
         assertStrValid(arya);
 
+        assert(str_indexOfStringAfterIndex(arya, littleFinger, 0) == -1);
+
         assert(str_indexOfStringAfterIndex(names, littleFinger, 0) == 0);
         assert(str_indexOfStringAfterIndex(names, littleFinger, 1) == 19);
         assert(str_indexOfStringAfterIndex(names, arya, 15) == 46);
+
+        assert(str_indexOfStringAfterIndex(names, str_createEmpty(), 5) == 6);
     }
     str_destroy(names);
     str_destroy(littleFinger);
@@ -489,6 +468,31 @@ bool test_str_toLowercase() {
         assert(str_equals(string, expected));
     }
     str_destroy(string);
+    str_destroy(expected);
+
+    return true;
+}
+
+bool test_str_set() {
+    String billy = str_createCopyOfLength("Billy\0Kimberley", 15);
+    String expected = str_createCopy("JillySOimberlNy");
+    {
+        assertStrValid(billy);
+        assertStrValid(expected);
+
+        str_set(billy, 0, 'J');
+        str_set(billy, 5, 'S');
+        str_set(billy, 6, 'O');
+        str_set(billy, 13, 'N');
+
+        assert(str_get(billy, 0) == 'J');
+        assert(str_get(billy, 5) == 'S');
+        assert(str_get(billy, 6) == 'O');
+        assert(str_get(billy, 13) == 'N');
+
+        assert(str_equals(billy, expected));
+    }
+    str_destroy(billy);
     str_destroy(expected);
 
     return true;
@@ -761,7 +765,7 @@ bool test_str_UCSCodepointToUTF8() {
     {
         assertStrValid(utf);
 
-        str_set(utf, 0, 0b00100100);
+        str_set(utf, 0, (char) 0b00100100);
 
         converted = str_UCSCodepointToUTF8(0b0100100);
 
@@ -774,8 +778,8 @@ bool test_str_UCSCodepointToUTF8() {
     {
         assertStrValid(utf);
 
-        str_set(utf, 0, 0b11000010);
-        str_set(utf, 1, 0b10100010);
+        str_set(utf, 0, (char) 0b11000010);
+        str_set(utf, 1, (char) 0b10100010);
 
         converted = str_UCSCodepointToUTF8(0b00010100010);
 
@@ -788,9 +792,9 @@ bool test_str_UCSCodepointToUTF8() {
     {
         assertStrValid(utf);
 
-        str_set(utf, 0, 0b11100010);
-        str_set(utf, 1, 0b10000010);
-        str_set(utf, 2, 0b10101100);
+        str_set(utf, 0, (char) 0b11100010);
+        str_set(utf, 1, (char) 0b10000010);
+        str_set(utf, 2, (char) 0b10101100);
 
         converted = str_UCSCodepointToUTF8(0b0010000010101100);
 
@@ -803,10 +807,10 @@ bool test_str_UCSCodepointToUTF8() {
     {
         assertStrValid(utf);
 
-        str_set(utf, 0, 0b11110000);
-        str_set(utf, 1, 0b10010000);
-        str_set(utf, 2, 0b10001101);
-        str_set(utf, 3, 0b10001000);
+        str_set(utf, 0, (char) 0b11110000);
+        str_set(utf, 1, (char) 0b10010000);
+        str_set(utf, 2, (char) 0b10001101);
+        str_set(utf, 3, (char) 0b10001000);
 
         converted = str_UCSCodepointToUTF8(0b000010000001101001000);
 
@@ -825,16 +829,14 @@ bool test_str_UCSCodepointToUTF8() {
 //
 
 void test_String(int * failures, int * successes) {
-    test(str_get);
-    test(str_set);
-    test(str_createEmpty);
-    test(str_isEmpty);
 
     test(str_create);
     test(str_createCopy);
     test(str_createOfLength);
     test(str_createCopyOfLength);
     test(str_createUninitialised);
+    test(str_createEmpty);
+    test(str_isEmpty);
     test(str_destroy);
 
     test(str_toCString);
@@ -846,6 +848,7 @@ void test_String(int * failures, int * successes) {
     test(str_startsWith);
     test(str_endsWith);
 
+    test(str_get);
     test(str_indexOfChar);
     test(str_indexOfString);
     test(str_indexOfCharAfterIndex);
@@ -857,6 +860,7 @@ void test_String(int * failures, int * successes) {
 
     test(str_toUppercase);
     test(str_toLowercase);
+    test(str_set);
     test(str_setChars);
     test(str_replaceChar);
     test(str_replaceString);

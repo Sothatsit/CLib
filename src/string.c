@@ -48,8 +48,16 @@ String str_createUninitialised(u64 length) {
     return string;
 }
 
+String str_createEmpty() {
+    return str_createOfLength(NULL, 0);
+}
+
+bool str_isEmpty(String string) {
+    return string.data == NULL || string.length == 0;
+}
+
 void str_destroy(String string) {
-    if(str_isEmpty(string) || string.data == NULL)
+    if(str_isEmpty(string))
         return;
 
     free(string.data);
@@ -145,24 +153,121 @@ bool str_endsWith(String string, String suffix) {
     return memcmp(&string.data[string.length - suffix.length], suffix.data, suffix.length) == 0;
 }
 
+char str_get(String string, u64 index) {
+    return index < string.length ? string.data[index] : (char) '\0';
+}
+
+s64 str_indexOfChar(String string, char find) {
+    return str_indexOfCharAfterIndex(string, find, 0);
+}
+
+s64 str_indexOfString(String string, String find) {
+    return str_indexOfStringAfterIndex(string, find, 0);
+}
+
+s64 str_indexOfCharAfterIndex(String string, char find, u64 index) {
+    for(; index < string.length; index++) {
+        if(string.data[index] == find)
+            return (s64) index;
+    }
+    return -1;
+}
+
+s64 str_indexOfStringAfterIndex(String string, String find, u64 index) {
+    if(find.length > string.length)
+        return -1;
+
+    if(find.length == 0)
+        return string.length > 0 ? (s64) (index + 1) : -1;
+
+    String checkString;
+
+    checkString.length = find.length;
+
+    u64 maxIndex = string.length - find.length;
+
+    for(; index <= maxIndex; index++) {
+        checkString.data = &string.data[index];
+
+        if(str_equals(checkString, find))
+            return (s64) index;
+    }
+
+    return -1;
+}
+
+s64 str_lastIndexOfChar(String string, char find) {
+    u64 index = string.length;
+
+    do {
+        --index;
+
+        if(string.data[index] == find)
+            return (s64) index;
+    } while(index > 0);
+
+    return -1;
+}
+
+s64 str_lastIndexOfString(String string, String find) {
+    if(find.length > string.length)
+        return -1;
+
+    String checkString;
+
+    checkString.length = find.length;
+
+    u64 index = string.length - find.length + 1;
+
+    do {
+        --index;
+
+        checkString.data = &string.data[index];
+
+        if(str_equals(checkString, find))
+            return (s64) index;
+    } while(index > 0);
+
+    return -1;
+}
+
+bool str_containsChar(String string, char find) {
+    return str_indexOfChar(string, find) != -1;
+}
+
+bool str_containsString(String string, String find) {
+    return str_indexOfString(string, find) != -1;
+}
+
 void str_toUppercase(String string) {
     for(u64 index = 0; index < string.length; index++) {
-        if(char_isLowercase(string.data[index])) {
-            string.data[index] -= ('a' - 'A');
-        }
+        string.data[index] = char_toUppercase(string.data[index]);
     }
 }
 
 void str_toLowercase(String string) {
     for(u64 index = 0; index < string.length; index++) {
-        if(char_isUppercase(string.data[index])) {
-            string.data[index] += ('a' - 'A');
-        }
+        string.data[index] = char_toLowercase(string.data[index]);
     }
 }
 
-void str_setChars(String string, u64 index, String replacement) {
+bool str_set(String string, u64 index, char character) {
+    if(index >= string.length)
+        return false;
+
+    string.data[index] = character;
+    return true;
+}
+
+bool str_setChars(String string, u64 index, String replacement) {
+    if(index + replacement.length > string.length)
+        return false;
+
+    if(str_isEmpty(replacement))
+        return true;
+
     memcpy(&string.data[index], replacement.data, replacement.length);
+    return true;
 }
 
 void str_replaceChar(String string, char find, char replacement) {
@@ -174,9 +279,6 @@ void str_replaceChar(String string, char find, char replacement) {
 }
 
 String str_replaceString(String string, String find, String replacement) {
-    if(find.length == 0)
-        return str_createEmpty();
-
     StringBuilder stringBuilder = strbuilder_create(string.length);
 
     if(stringBuilder.capacity == 0)
@@ -204,9 +306,6 @@ String str_replaceString(String string, String find, String replacement) {
 }
 
 String str_replaceStringInPlace(String string, String find, String replacement) {
-    if(find.length == 0)
-        return str_createEmpty();
-
     if(replacement.length > find.length)
         return str_createEmpty();
 
@@ -233,41 +332,38 @@ String str_replaceStringInPlace(String string, String find, String replacement) 
             if(copyFromIndex) {
                 String copyBack = str_substring(string, copyFromIndex, (u64) findIndex);
 
-                str_setChars(modified, modified.length, copyBack);
+                u64 end = modified.length;
                 modified.length += copyBack.length;
+                str_setChars(modified, end, copyBack);
             } else {
                 modified.length = (u64) findIndex;
             }
 
-            str_setChars(modified, modified.length, replacement);
+            u64 end = modified.length;
             modified.length += replacement.length;
+            str_setChars(modified, end, replacement);
 
             copyFromIndex = findIndex + find.length;
         }
 
         String copyBack = str_substring(string, copyFromIndex, string.length);
 
-        str_setChars(modified, modified.length, copyBack);
+        u64 end = modified.length;
         modified.length += copyBack.length;
+        str_setChars(modified, end, copyBack);
 
         return modified;
     }
 }
 
 String str_concat(String string1, String string2) {
-    if(str_isEmpty(string1))
-        return string2;
-
-    if(str_isEmpty(string2))
-        return string1;
-
     String newString = str_createUninitialised(string1.length + string2.length);
 
     if(str_isEmpty(newString))
         return newString;
 
-    memcpy(newString.data, string1.data, string1.length);
-    memcpy(&newString.data[string1.length], string2.data, string2.length);
+    str_setChars(newString, 0, string1);
+    str_setChars(newString, string1.length, string2);
 
     return newString;
 }
@@ -285,24 +381,7 @@ String str_substring(String string, u64 start, u64 end) {
 }
 
 String str_trim(String string) {
-    u64 start = 0;
-    u64 end = string.length;
-
-    while(end > 0) {
-        if(!char_isWhitespace(str_get(string, end - 1)))
-            break;
-
-        end--;
-    }
-
-    while(start < string.length) {
-        if(!char_isWhitespace(str_get(string, start)))
-            break;
-
-        start++;
-    }
-
-    return str_substring(string, start, end);
+    return str_trimLeading(str_trimTrailing(string));
 }
 
 String str_trimLeading(String string) {
@@ -325,89 +404,10 @@ String str_trimTrailing(String string) {
         if(!char_isWhitespace(str_get(string, end - 1)))
             break;
 
-        end--;
+        --end;
     }
 
     return str_substring(string, 0, end);
-}
-
-s64 str_indexOfChar(String string, char find) {
-    return str_indexOfCharAfterIndex(string, find, 0);
-}
-
-s64 str_indexOfString(String string, String find) {
-    return str_indexOfStringAfterIndex(string, find, 0);
-}
-
-s64 str_indexOfCharAfterIndex(String string, char find, u64 index) {
-    for(; index < string.length; index++) {
-        if(str_get(string, index) == find)
-            return (s64) index;
-    }
-    return -1;
-}
-
-s64 str_indexOfStringAfterIndex(String string, String find, u64 index) {
-    if(find.length > string.length)
-        return -1;
-
-    String checkString;
-
-    checkString.length = find.length;
-
-    u64 maxIndex = string.length - find.length;
-
-    for(; index <= maxIndex; index++) {
-        checkString.data = &string.data[index];
-
-        if(str_equals(checkString, find))
-            return (s64) index;
-    }
-
-    return -1;
-}
-
-s64 str_lastIndexOfChar(String string, char find) {
-    u64 index = string.length;
-
-    do {
-        index--;
-
-        if(str_get(string, index) == find)
-            return (s64) index;
-    } while(index > 0);
-
-    return -1;
-}
-
-s64 str_lastIndexOfString(String string, String find) {
-    if(find.length > string.length)
-        return -1;
-
-    String checkString;
-
-    checkString.length = find.length;
-
-    u64 index = string.length - find.length + 1;
-
-    do {
-        index--;
-
-        checkString.data = &string.data[index];
-
-        if(str_equals(checkString, find))
-            return (s64) index;
-    } while(index > 0);
-
-    return -1;
-}
-
-bool str_containsChar(String string, char find) {
-    return str_indexOfChar(string, find) != -1;
-}
-
-bool str_containsString(String string, String find) {
-    return str_indexOfString(string, find) != -1;
 }
 
 String str_splitAt(String * remaining, s64 index, u64 delimiterLength) {
@@ -548,20 +548,12 @@ String str_UCSCodepointToUTF8(u32 codepoint) {
 //
 
 StringBuilder strbuilder_create(u64 initialSize) {
-    initialSize = u64_findNextPowerOf2(initialSize);
-
     StringBuilder stringBuilder;
 
-    stringBuilder.string = str_createUninitialised(initialSize);
+    stringBuilder.string = str_createEmpty();
+    stringBuilder.capacity = 0;
 
-    if(str_isEmpty(stringBuilder.string)) {
-        stringBuilder.capacity = 0;
-
-        return stringBuilder;
-    }
-
-    stringBuilder.string.length = 0;
-    stringBuilder.capacity = initialSize;
+    strbuilder_setCapacity(&stringBuilder, initialSize);
 
     return stringBuilder;
 }
@@ -629,21 +621,27 @@ bool strbuilder_trimToLength(StringBuilder * stringBuilder) {
 }
 
 bool strbuilder_appendChar(StringBuilder * stringBuilder, char character) {
-    if(!strbuilder_ensureCapacity(stringBuilder, stringBuilder->string.length + 1))
+    u64 requiredCapacity = stringBuilder->string.length + 1;
+
+    if(!strbuilder_ensureCapacity(stringBuilder, requiredCapacity))
         return false;
 
-    str_set(stringBuilder->string, stringBuilder->string.length, character);
+    u64 end = stringBuilder->string.length;
     stringBuilder->string.length += 1;
+    str_set(stringBuilder->string, end, character);
 
     return true;
 }
 
 bool strbuilder_appendString(StringBuilder * stringBuilder, String string) {
-    if(!strbuilder_ensureCapacity(stringBuilder, stringBuilder->string.length + string.length))
+    u64 requiredCapacity = stringBuilder->string.length + string.length;
+
+    if(!strbuilder_ensureCapacity(stringBuilder, requiredCapacity))
         return false;
 
-    str_setChars(stringBuilder->string, stringBuilder->string.length, string);
+    u64 end = stringBuilder->string.length;
     stringBuilder->string.length += string.length;
+    str_setChars(stringBuilder->string, end, string);
 
     return true;
 }

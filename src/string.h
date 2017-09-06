@@ -1,5 +1,5 @@
-#ifndef JSON_util_string_h
-#define JSON_util_string_h
+#ifndef __CLIB_string_h
+#define __CLIB_string_h
 
 #include "numbers.h"
 

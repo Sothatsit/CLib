@@ -3,11 +3,11 @@ CC = clang
 OPTS = -c -Wall
 
 # Project name
-PROJECT = test
+PROJECT = testclib
 
 # Directories
 OBJDIR = obj
-SRCDIR = src
+SRCDIR = src test
 
 # Libraries
 LIBS = 

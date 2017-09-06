@@ -1,5 +1,5 @@
-#ifndef JSON_types_h
-#define JSON_types_h
+#ifndef __CLIB_numbers_h
+#define __CLIB_numbers_h
 
 #include <stdint.h>
 

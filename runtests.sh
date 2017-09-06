@@ -3,7 +3,7 @@
 clear
 if make; then
     echo ""
-    ./test
+    ./testclib
 else
     echo -e "\x1B[31m\x1B[1m"
     echo "-------------------------------------"

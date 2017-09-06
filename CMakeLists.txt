@@ -8,6 +8,11 @@ set(SOURCE_FILES
         src/numbers.c
         src/string.h
         src/string.c
-        src/test.c)
+        test/test.h
+        test/test.c
+        test/testString.h
+        test/testString.c
+        test/testStringBuilder.h
+        test/testStringBuilder.c)
 
 add_executable(CLib ${SOURCE_FILES})

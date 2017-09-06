@@ -20,7 +20,7 @@
 #define SUCCESS  GREEN BOLD "Success" RESET
 #define LINE     "-------------------------------------"
 
-#define assertTrue(condition)                                                                                   \
+#define assert(condition)                                                                                   \
     do {if(!(condition)) {                                                                                      \
          printf(ERROR " : " YELLOW "line %d" RESET " in " YELLOW __FILE__ RESET "\n", __LINE__);                \
          return false;                                                                                          \
@@ -41,12 +41,6 @@
         assertNonNull(string.data);                                                                             \
     } while(0)
 
-#define assertArrValid(array)                                                                                 \
-    do {                                                                                                        \
-        assertOrError(!arr_isEmpty(array), #array " is unexpectedly empty");                                    \
-        assertNonNull(array.data);                                                                              \
-    } while(0)
-
 
 
 //
@@ -58,11 +52,11 @@ bool test_str_get() {
     {
         assertStrValid(johnDoe);
 
-        assertTrue(str_get(johnDoe, 0) == 'J');
-        assertTrue(str_get(johnDoe, 3) == 'n');
-        assertTrue(str_get(johnDoe, 4) == '\0');
-        assertTrue(str_get(johnDoe, 5) == 'D');
-        assertTrue(str_get(johnDoe, 7) == 'e');
+        assert(str_get(johnDoe, 0) == 'J');
+        assert(str_get(johnDoe, 3) == 'n');
+        assert(str_get(johnDoe, 4) == '\0');
+        assert(str_get(johnDoe, 5) == 'D');
+        assert(str_get(johnDoe, 7) == 'e');
     }
     str_destroy(johnDoe);
 
@@ -81,12 +75,12 @@ bool test_str_set() {
         str_set(billy, 6, 'O');
         str_set(billy, 13, 'N');
 
-        assertTrue(str_get(billy, 0) == 'J');
-        assertTrue(str_get(billy, 5) == 'S');
-        assertTrue(str_get(billy, 6) == 'O');
-        assertTrue(str_get(billy, 13) == 'N');
+        assert(str_get(billy, 0) == 'J');
+        assert(str_get(billy, 5) == 'S');
+        assert(str_get(billy, 6) == 'O');
+        assert(str_get(billy, 13) == 'N');
 
-        assertTrue(str_equals(billy, expected));
+        assert(str_equals(billy, expected));
     }
     str_destroy(billy);
     str_destroy(expected);
@@ -97,7 +91,7 @@ bool test_str_set() {
 bool test_str_createEmpty() {
     String empty = str_createEmpty();
     {
-        assertTrue(empty.length == 0);
+        assert(empty.length == 0);
     }
     str_destroy(empty);
 
@@ -110,8 +104,8 @@ bool test_str_isEmpty() {
     {
         assertStrValid(nonEmpty);
 
-        assertTrue(str_isEmpty(empty));
-        assertTrue(!str_isEmpty(nonEmpty));
+        assert(str_isEmpty(empty));
+        assert(!str_isEmpty(nonEmpty));
     }
     str_destroy(empty);
     str_destroy(nonEmpty);
@@ -126,8 +120,8 @@ bool test_str_create() {
     {
         assertStrValid(string);
 
-        assertTrue(string.length == 18);
-        assertTrue(string.data == data);
+        assert(string.length == 18);
+        assert(string.data == data);
     }
 
     return true;
@@ -142,8 +136,8 @@ bool test_str_createCopy() {
         assertStrValid(johnDoe);
         assertStrValid(johnDoeCopy);
 
-        assertTrue(str_equals(johnDoe, johnDoeCopy));
-        assertTrue(johnDoe.data != johnDoeCopy.data);
+        assert(str_equals(johnDoe, johnDoeCopy));
+        assert(johnDoe.data != johnDoeCopy.data);
     }
     str_destroy(johnDoeCopy);
 
@@ -157,8 +151,8 @@ bool test_str_createOfLength() {
         assertStrValid(string1);
         assertStrValid(string2);
 
-        assertTrue(string1.length == 11);
-        assertTrue(str_equals(string1, string2));
+        assert(string1.length == 11);
+        assert(str_equals(string1, string2));
     }
 
     return true;
@@ -173,8 +167,8 @@ bool test_str_createCopyOfLength() {
         assertStrValid(string1);
         assertStrValid(string2);
 
-        assertTrue(str_equals(string1, string2));
-        assertTrue(string1.data != string2.data);
+        assert(str_equals(string1, string2));
+        assert(string1.data != string2.data);
     }
     str_destroy(string2);
 
@@ -187,13 +181,13 @@ bool test_str_createUninitialised() {
     {
         assertStrValid(string);
         assertStrValid(expected);
-        assertTrue(string.length == 10);
+        assert(string.length == 10);
 
         for(int index = 0; index < string.length; index++) {
             string.data[index] = (char) ('A' + index);
         }
 
-        assertTrue(str_equals(string, expected));
+        assert(str_equals(string, expected));
     }
     str_destroy(string);
     str_destroy(expected);
@@ -205,13 +199,13 @@ bool test_str_destroy() {
     return true;
 }
 
-bool test_str_toNullTerminated() {
+bool test_str_toCString() {
     String johnDoe = str_createCopy("John Doe");
-    char * nullTerminated = str_toNullTerminated(johnDoe);
+    char * nullTerminated = str_toCString(johnDoe);
     {
         assertStrValid(johnDoe);
 
-        assertTrue(strcmp("John Doe", nullTerminated) == 0);
+        assert(strcmp("John Doe", nullTerminated) == 0);
     }
     str_destroy(johnDoe);
     free(nullTerminated);
@@ -226,7 +220,7 @@ bool test_str_format() {
         assertStrValid(formatted);
         assertStrValid(expected);
 
-        assertTrue(str_equals(formatted, expected));
+        assert(str_equals(formatted, expected));
     }
     str_destroy(formatted);
     str_destroy(expected);
@@ -252,7 +246,7 @@ bool test_str_vformat() {
         assertStrValid(formatted);
         assertStrValid(expected);
 
-        assertTrue(str_equals(formatted, expected));
+        assert(str_equals(formatted, expected));
     }
     str_destroy(formatted);
     str_destroy(expected);
@@ -267,7 +261,7 @@ bool test_str_copy() {
         assertStrValid(johnDoe);
         assertStrValid(johnDoeCopy);
 
-        assertTrue(str_equals(johnDoe, johnDoeCopy));
+        assert(str_equals(johnDoe, johnDoeCopy));
     }
     str_destroy(johnDoeCopy);
 
@@ -285,10 +279,10 @@ bool test_str_equals() {
         assertStrValid(johnDoe);
         assertStrValid(johnPaul);
 
-        assertTrue(!str_equals(bob, jeff));
-        assertTrue(str_equals(bob, bob));
-        assertTrue(!str_equals(johnDoe, johnPaul));
-        assertTrue(!str_equals(johnPaul, johnDoe));
+        assert(!str_equals(bob, jeff));
+        assert(str_equals(bob, bob));
+        assert(!str_equals(johnDoe, johnPaul));
+        assert(!str_equals(johnPaul, johnDoe));
     }
     str_destroy(bob);
     str_destroy(jeff);
@@ -309,10 +303,10 @@ bool test_str_startsWith() {
         assertStrValid(johnDoe);
         assertStrValid(johnPaul);
 
-        assertTrue(!str_startsWith(bob, jeff));
-        assertTrue(str_startsWith(jeff, bob));
-        assertTrue(!str_startsWith(johnDoe, johnPaul));
-        assertTrue(!str_startsWith(johnPaul, johnDoe));
+        assert(!str_startsWith(bob, jeff));
+        assert(str_startsWith(jeff, bob));
+        assert(!str_startsWith(johnDoe, johnPaul));
+        assert(!str_startsWith(johnPaul, johnDoe));
     }
     str_destroy(bob);
     str_destroy(jeff);
@@ -333,16 +327,16 @@ bool test_str_endsWith() {
         assertStrValid(johnDoe);
         assertStrValid(johnPaul);
 
-        assertTrue(!str_endsWith(bob, jeff));
-        assertTrue(str_endsWith(jeff, bob));
-        assertTrue(!str_endsWith(johnDoe, johnPaul));
-        assertTrue(!str_endsWith(johnPaul, johnDoe));
+        assert(!str_endsWith(bob, jeff));
+        assert(str_endsWith(jeff, bob));
+        assert(!str_endsWith(johnDoe, johnPaul));
+        assert(!str_endsWith(johnPaul, johnDoe));
 
         memcpy(johnDoe.data, "Doe\0John", 8);
         memcpy(johnPaul.data, "Paul\0John", 9);
 
-        assertTrue(!str_endsWith(johnDoe, johnPaul));
-        assertTrue(!str_endsWith(johnPaul, johnDoe));
+        assert(!str_endsWith(johnDoe, johnPaul));
+        assert(!str_endsWith(johnPaul, johnDoe));
     }
     str_destroy(bob);
     str_destroy(jeff);
@@ -357,9 +351,9 @@ bool test_str_indexOfChar() {
     {
         assertStrValid(names);
 
-        assertTrue(str_indexOfChar(names, ' ') == 6);
-        assertTrue(str_indexOfChar(names, 'a') == 15);
-        assertTrue(str_indexOfChar(names, '\0') == 13);
+        assert(str_indexOfChar(names, ' ') == 6);
+        assert(str_indexOfChar(names, 'a') == 15);
+        assert(str_indexOfChar(names, '\0') == 13);
     }
     str_destroy(names);
 
@@ -377,9 +371,9 @@ bool test_str_indexOfString() {
         assertStrValid(jon);
         assertStrValid(arya);
 
-        assertTrue(str_indexOfString(names, littleFinger) == 0);
-        assertTrue(str_indexOfString(names, jon) == 20);
-        assertTrue(str_indexOfString(names, arya) == 37);
+        assert(str_indexOfString(names, littleFinger) == 0);
+        assert(str_indexOfString(names, jon) == 20);
+        assert(str_indexOfString(names, arya) == 37);
     }
     str_destroy(names);
     str_destroy(littleFinger);
@@ -394,9 +388,9 @@ bool test_str_indexOfCharAfterIndex() {
     {
         assertStrValid(names);
 
-        assertTrue(str_indexOfCharAfterIndex(names, ' ', 6) == 6);
-        assertTrue(str_indexOfCharAfterIndex(names, 'a', 16) == 33);
-        assertTrue(str_indexOfCharAfterIndex(names, '\0', 15) == 19);
+        assert(str_indexOfCharAfterIndex(names, ' ', 6) == 6);
+        assert(str_indexOfCharAfterIndex(names, 'a', 16) == 33);
+        assert(str_indexOfCharAfterIndex(names, '\0', 15) == 19);
     }
     str_destroy(names);
 
@@ -412,9 +406,9 @@ bool test_str_indexOfStringAfterIndex() {
         assertStrValid(littleFinger);
         assertStrValid(arya);
 
-        assertTrue(str_indexOfStringAfterIndex(names, littleFinger, 0) == 0);
-        assertTrue(str_indexOfStringAfterIndex(names, littleFinger, 1) == 19);
-        assertTrue(str_indexOfStringAfterIndex(names, arya, 15) == 46);
+        assert(str_indexOfStringAfterIndex(names, littleFinger, 0) == 0);
+        assert(str_indexOfStringAfterIndex(names, littleFinger, 1) == 19);
+        assert(str_indexOfStringAfterIndex(names, arya, 15) == 46);
     }
     str_destroy(names);
     str_destroy(littleFinger);
@@ -428,9 +422,9 @@ bool test_str_lastIndexOfChar() {
     {
         assertStrValid(names);
 
-        assertTrue(str_lastIndexOfChar(names, ' ') == 6);
-        assertTrue(str_lastIndexOfChar(names, 'a') == 41);
-        assertTrue(str_lastIndexOfChar(names, '\0') == 37);
+        assert(str_lastIndexOfChar(names, ' ') == 6);
+        assert(str_lastIndexOfChar(names, 'a') == 41);
+        assert(str_lastIndexOfChar(names, '\0') == 37);
     }
     str_destroy(names);
 
@@ -448,9 +442,9 @@ bool test_str_lastIndexOfString() {
         assertStrValid(tyrrion);
         assertStrValid(arya);
 
-        assertTrue(str_lastIndexOfString(names, littleFinger) == 19);
-        assertTrue(str_lastIndexOfString(names, tyrrion) == 33);
-        assertTrue(str_lastIndexOfString(names, arya) == 46);
+        assert(str_lastIndexOfString(names, littleFinger) == 19);
+        assert(str_lastIndexOfString(names, tyrrion) == 33);
+        assert(str_lastIndexOfString(names, arya) == 46);
     }
     str_destroy(names);
     str_destroy(littleFinger);
@@ -465,11 +459,11 @@ bool test_str_containsChar() {
     {
         assertStrValid(jeff);
 
-        assertTrue(!str_containsChar(jeff, 'z'));
-        assertTrue(str_containsChar(jeff, 'f'));
-        assertTrue(str_containsChar(jeff, ' '));
-        assertTrue(!str_containsChar(jeff, 'F'));
-        assertTrue(str_containsChar(jeff, '\0'));
+        assert(!str_containsChar(jeff, 'z'));
+        assert(str_containsChar(jeff, 'f'));
+        assert(str_containsChar(jeff, ' '));
+        assert(!str_containsChar(jeff, 'F'));
+        assert(str_containsChar(jeff, '\0'));
     }
     str_destroy(jeff);
 
@@ -489,11 +483,11 @@ bool test_str_containsString() {
         assertStrValid(withNull);
         assertStrValid(differentAfterNull);
 
-        assertTrue(!str_containsString(jeff, jess));
-        assertTrue(str_containsString(jeff, bob));
-        assertTrue(!str_containsString(bob, jeff));
-        assertTrue(str_containsString(jeff, withNull));
-        assertTrue(!str_containsString(jeff, differentAfterNull));
+        assert(!str_containsString(jeff, jess));
+        assert(str_containsString(jeff, bob));
+        assert(!str_containsString(bob, jeff));
+        assert(str_containsString(jeff, withNull));
+        assert(!str_containsString(jeff, differentAfterNull));
     }
     str_destroy(jeff);
     str_destroy(bob);
@@ -513,7 +507,7 @@ bool test_str_toUppercase() {
 
         str_toUppercase(string);
 
-        assertTrue(str_equals(string, expected));
+        assert(str_equals(string, expected));
     }
     str_destroy(string);
     str_destroy(expected);
@@ -530,7 +524,7 @@ bool test_str_toLowercase() {
 
         str_toLowercase(string);
 
-        assertTrue(str_equals(string, expected));
+        assert(str_equals(string, expected));
     }
     str_destroy(string);
     str_destroy(expected);
@@ -552,7 +546,7 @@ bool test_str_setChars() {
         str_setChars(string, 1, jeff);
         str_setChars(string, 16, bob);
 
-        assertTrue(str_equals(string, expected));
+        assert(str_equals(string, expected));
     }
     str_destroy(string);
     str_destroy(jeff);
@@ -571,7 +565,7 @@ bool test_str_replaceChar() {
 
         str_replaceChar(mississippi, 's', 'r');
 
-        assertTrue(str_equals(mississippi, expected));
+        assert(str_equals(mississippi, expected));
     }
     str_destroy(mississippi);
     str_destroy(expected);
@@ -590,7 +584,7 @@ bool test_str_replaceString() {
         replaced = str_replaceString(apples, str_create("apple"), str_create("pineapple"));
 
         assertStrValid(replaced);
-        assertTrue(str_equals(replaced, pineapples));
+        assert(str_equals(replaced, pineapples));
     }
     str_destroy(apples);
     str_destroy(pineapples);
@@ -608,7 +602,7 @@ bool test_str_replaceStringInPlace() {
 
         pineapples = str_replaceStringInPlace(pineapples, str_create("pineapple"), str_create("apple"));
 
-        assertTrue(str_equals(pineapples, apples));
+        assert(str_equals(pineapples, apples));
     }
     str_destroy(apples);
     str_destroy(pineapples);
@@ -629,7 +623,7 @@ bool test_str_concat() {
         added = str_concat(a, b);
 
         assertStrValid(added);
-        assertTrue(str_equals(added, expected));
+        assert(str_equals(added, expected));
     }
     str_destroy(a);
     str_destroy(b);
@@ -648,7 +642,7 @@ bool test_str_substring() {
 
         String substring = str_substring(string, 9, 26);
 
-        assertTrue(str_equals(substring, expected));
+        assert(str_equals(substring, expected));
     }
     str_destroy(string);
     str_destroy(expected);
@@ -665,7 +659,7 @@ bool test_str_trim() {
 
         String trimmed = str_trim(string);
 
-        assertTrue(str_equals(trimmed, expected));
+        assert(str_equals(trimmed, expected));
     }
     str_destroy(string);
     str_destroy(expected);
@@ -682,7 +676,7 @@ bool test_str_trimLeading() {
 
         String trimmed = str_trimLeading(string);
 
-        assertTrue(str_equals(trimmed, expected));
+        assert(str_equals(trimmed, expected));
     }
     str_destroy(string);
     str_destroy(expected);
@@ -700,7 +694,7 @@ bool test_str_trimTrailing() {
         String trimmed = str_trimTrailing(string);
 
         assertStrValid(trimmed);
-        assertTrue(str_equals(trimmed, expected));
+        assert(str_equals(trimmed, expected));
     }
     str_destroy(string);
     str_destroy(expected);
@@ -726,9 +720,9 @@ bool test_str_splitAt() {
         assertStrValid(second);
         assertStrValid(third);
 
-        assertTrue(str_equals(expectedFirst, first));
-        assertTrue(str_equals(expectedSecond, second));
-        assertTrue(str_equals(expectedThird, third));
+        assert(str_equals(expectedFirst, first));
+        assert(str_equals(expectedSecond, second));
+        assert(str_equals(expectedThird, third));
     }
     str_destroy(originalString);
     str_destroy(expectedFirst);
@@ -755,9 +749,9 @@ bool test_str_splitAtFirstChar() {
         assertStrValid(second);
         assertStrValid(third);
 
-        assertTrue(str_equals(expectedFirst, first));
-        assertTrue(str_equals(expectedSecond, second));
-        assertTrue(str_equals(expectedThird, third));
+        assert(str_equals(expectedFirst, first));
+        assert(str_equals(expectedSecond, second));
+        assert(str_equals(expectedThird, third));
     }
     str_destroy(originalString);
     str_destroy(expectedFirst);
@@ -786,9 +780,9 @@ bool test_str_splitAtFirstString() {
         assertStrValid(second);
         assertStrValid(third);
 
-        assertTrue(str_equals(expectedFirst, first));
-        assertTrue(str_equals(expectedSecond, second));
-        assertTrue(str_equals(expectedThird, third));
+        assert(str_equals(expectedFirst, first));
+        assert(str_equals(expectedSecond, second));
+        assert(str_equals(expectedThird, third));
     }
     str_destroy(originalString);
     str_destroy(delimiter);
@@ -809,7 +803,7 @@ bool test_str_UCSCodepointToUTF8() {
 
         converted = str_UCSCodepointToUTF8(0b0100100);
 
-        assertTrue(str_equals(utf, converted));
+        assert(str_equals(utf, converted));
     }
     str_destroy(utf);
     str_destroy(converted);
@@ -823,7 +817,7 @@ bool test_str_UCSCodepointToUTF8() {
 
         converted = str_UCSCodepointToUTF8(0b00010100010);
 
-        assertTrue(str_equals(utf, converted));
+        assert(str_equals(utf, converted));
     }
     str_destroy(utf);
     str_destroy(converted);
@@ -838,7 +832,7 @@ bool test_str_UCSCodepointToUTF8() {
 
         converted = str_UCSCodepointToUTF8(0b0010000010101100);
 
-        assertTrue(str_equals(utf, converted));
+        assert(str_equals(utf, converted));
     }
     str_destroy(utf);
     str_destroy(converted);
@@ -854,7 +848,7 @@ bool test_str_UCSCodepointToUTF8() {
 
         converted = str_UCSCodepointToUTF8(0b000010000001101001000);
 
-        assertTrue(str_equals(utf, converted));
+        assert(str_equals(utf, converted));
     }
     str_destroy(utf);
     str_destroy(converted);
@@ -862,7 +856,191 @@ bool test_str_UCSCodepointToUTF8() {
     return true;
 }
 
-// TODO: String array and list tests
+
+
+//
+// String Builder Tests
+//
+
+bool test_strbuilder_create() {
+    StringBuilder builder = strbuilder_create(32);
+    {
+        assert(builder.capacity == 32);
+        assert(str_isEmpty(builder.string));
+    }
+    strbuilder_destroy(builder);
+
+    return true;
+}
+
+bool test_strbuilder_destroy() {
+    return true;
+}
+
+bool test_strbuilder_getStringCopy() {
+    String expected = str_create("Apple pie is super nice man");
+    StringBuilder builder = strbuilder_create(0);
+    String builtString;
+    {
+        strbuilder_appendCString(&builder, "Apple");
+        strbuilder_appendChar(&builder, ' ');
+        strbuilder_appendCString(&builder, "pie");
+        strbuilder_appendChar(&builder, ' ');
+        strbuilder_appendCString(&builder, "is");
+        strbuilder_appendChar(&builder, ' ');
+        strbuilder_appendCString(&builder, "super");
+        strbuilder_appendChar(&builder, ' ');
+        strbuilder_appendCString(&builder, "nice");
+        strbuilder_appendChar(&builder, ' ');
+        strbuilder_appendCString(&builder, "man");
+
+        builtString = strbuilder_getStringCopy(builder);
+
+        assert(str_equals(builtString, expected));
+        assert(str_equals(builder.string, builtString));
+        assert(builder.string.data != builtString.data);
+    }
+    strbuilder_destroy(builder);
+    str_destroy(builtString);
+
+    return true;
+}
+
+bool test_strbuilder_setCapacity() {
+    StringBuilder builder = strbuilder_create(32);
+    strbuilder_appendCString(&builder, "Testing testing, 1, 2, 3");
+    {
+        assert(builder.capacity == 32);
+
+        assert(strbuilder_setCapacity(&builder, 24));
+        assert(builder.capacity == 24);
+
+        assert(strbuilder_setCapacity(&builder, 80));
+        assert(builder.capacity == 80);
+
+        assert(!strbuilder_setCapacity(&builder, 20));
+        assert(builder.capacity == 80);
+    }
+    strbuilder_destroy(builder);
+
+    return true;
+}
+
+bool test_strbuilder_ensureCapacity() {
+    StringBuilder builder = strbuilder_create(32);
+    strbuilder_appendCString(&builder, "Testing testing, 1, 2, 3");
+    {
+        assert(builder.capacity == 32);
+
+        assert(strbuilder_ensureCapacity(&builder, 24));
+        assert(builder.capacity >= 24);
+
+        assert(strbuilder_ensureCapacity(&builder, 80));
+        assert(builder.capacity >= 80);
+
+        assert(strbuilder_ensureCapacity(&builder, 20));
+        assert(builder.capacity >= 20);
+    }
+    strbuilder_destroy(builder);
+
+    return true;
+}
+
+bool test_strbuilder_trimToLength() {
+    StringBuilder builder = strbuilder_create(32);
+    strbuilder_appendCString(&builder, "Testing testing, 1, 2, 3");
+    {
+        assert(builder.capacity == 32);
+
+        assert(strbuilder_trimToLength(&builder));
+        assert(builder.capacity == 24);
+
+        strbuilder_appendCString(&builder, "...");
+
+        assert(strbuilder_trimToLength(&builder));
+        assert(builder.capacity == 27);
+    }
+    strbuilder_destroy(builder);
+
+    return true;
+}
+
+bool test_strbuilder_appendChar() {
+    String expected = str_create("aBc123-_\\[ ");
+    StringBuilder builder = strbuilder_create(0);
+    {
+        strbuilder_appendChar(&builder, 'a');
+        strbuilder_appendChar(&builder, 'B');
+        strbuilder_appendChar(&builder, 'c');
+        strbuilder_appendChar(&builder, '1');
+        strbuilder_appendChar(&builder, '2');
+        strbuilder_appendChar(&builder, '3');
+        strbuilder_appendChar(&builder, '-');
+        strbuilder_appendChar(&builder, '_');
+        strbuilder_appendChar(&builder, '\\');
+        strbuilder_appendChar(&builder, '[');
+        strbuilder_appendChar(&builder, ' ');
+
+        assert(str_equals(builder.string, expected));
+    }
+    strbuilder_destroy(builder);
+
+    return true;
+}
+
+bool test_strbuilder_appendString() {
+    String expected = str_create("Apple pie is super nice man");
+    StringBuilder builder = strbuilder_create(0);
+    {
+        strbuilder_appendString(&builder, str_create("Apple "));
+        strbuilder_appendString(&builder, str_create("pie "));
+        strbuilder_appendString(&builder, str_create("is "));
+        strbuilder_appendString(&builder, str_create("super "));
+        strbuilder_appendString(&builder, str_create("nice "));
+        strbuilder_appendString(&builder, str_create("man"));
+
+        assert(str_equals(builder.string, expected));
+    }
+    strbuilder_destroy(builder);
+
+    return true;
+}
+
+bool test_strbuilder_appendCString() {
+    String expected = str_create("Apple pie is super nice man");
+    StringBuilder builder = strbuilder_create(0);
+    {
+        strbuilder_appendCString(&builder, "Apple ");
+        strbuilder_appendCString(&builder, "pie ");
+        strbuilder_appendCString(&builder, "is ");
+        strbuilder_appendCString(&builder, "super ");
+        strbuilder_appendCString(&builder, "nice ");
+        strbuilder_appendCString(&builder, "man");
+
+        assert(str_equals(builder.string, expected));
+    }
+    strbuilder_destroy(builder);
+
+    return true;
+}
+
+bool test_strbuilder_appendSubstring() {
+    String expected = str_create("Apple pie is super nice man");
+    StringBuilder builder = strbuilder_create(0);
+    {
+        strbuilder_appendSubstring(&builder, str_create("Apple apple "), 0, 6);
+        strbuilder_appendSubstring(&builder, str_create("pie pie "), 0, 4);
+        strbuilder_appendSubstring(&builder, str_create("is is "), 3, 6);
+        strbuilder_appendSubstring(&builder, str_create("super super "), 0, 6);
+        strbuilder_appendSubstring(&builder, str_create("nice nice "), 5, 10);
+        strbuilder_appendSubstring(&builder, str_create("man man"), 0, 3);
+
+        assert(str_equals(builder.string, expected));
+    }
+    strbuilder_destroy(builder);
+
+    return true;
+}
 
 
 
@@ -906,7 +1084,7 @@ int main(int argc, char *argv[]) {
     printf(BLUE BOLD "Running tests...\n\n" RESET);
 
     //
-    // String tests
+    // String Tests
     //
 
     test(str_get);
@@ -921,7 +1099,7 @@ int main(int argc, char *argv[]) {
     test(str_createUninitialised);
     test(str_destroy);
 
-    test(str_toNullTerminated);
+    test(str_toCString);
     test(str_format);
     test(str_vformat);
     test(str_copy);
@@ -954,6 +1132,24 @@ int main(int argc, char *argv[]) {
     test(str_splitAtFirstChar);
     test(str_splitAtFirstString);
     test(str_UCSCodepointToUTF8);
+
+
+
+    //
+    // String Builder Tests
+    //
+
+    test(strbuilder_create);
+    test(strbuilder_destroy);
+    test(strbuilder_getStringCopy);
+    test(strbuilder_setCapacity);
+    test(strbuilder_ensureCapacity);
+    test(strbuilder_trimToLength);
+
+    test(strbuilder_appendChar);
+    test(strbuilder_appendString);
+    test(strbuilder_appendCString);
+    test(strbuilder_appendSubstring);
 
 
 

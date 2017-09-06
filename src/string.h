@@ -1,7 +1,7 @@
 #ifndef JSON_util_string_h
 #define JSON_util_string_h
 
-#include "types.h"
+#include "numbers.h"
 
 #include <stdbool.h>
 #include <stdarg.h>
@@ -150,7 +150,7 @@ void str_destroy(String string);
 /*
  * Creates a null terminated version of {string}.
  */
-char * str_toNullTerminated(String string);
+char * str_toCString(String string);
 
 /*
  * Creates a String from the printf format string {format}.
@@ -430,6 +430,12 @@ bool strbuilder_appendChar(StringBuilder * stringBuilder, char character);
  */
 bool strbuilder_appendString(StringBuilder * stringBuilder, String string);
 
+/*
+ * Will append string to stringBuilder.
+ *
+ * Will return true if successful.
+ */
+bool strbuilder_appendCString(StringBuilder * stringBuilder, char * string);
 /*
  * Append a substring of string inclusive from the index start to end - 1 to stringBuilder.
  */

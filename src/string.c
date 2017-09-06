@@ -55,7 +55,7 @@ void str_destroy(String string) {
     free(string.data);
 }
 
-char * str_toNullTerminated(String string) {
+char * str_toCString(String string) {
     char * data = malloc(string.length + 1);
 
     if(data == NULL)
@@ -550,9 +550,7 @@ String str_UCSCodepointToUTF8(u32 codepoint) {
 //
 
 StringBuilder strbuilder_create(u64 initialSize) {
-    if(initialSize == 0){
-        initialSize = 32;
-    }
+    initialSize = u64_findNextPowerOf2(initialSize);
 
     StringBuilder stringBuilder;
 
@@ -582,17 +580,31 @@ String strbuilder_getStringCopy(StringBuilder stringBuilder) {
 }
 
 bool strbuilder_setCapacity(StringBuilder * stringBuilder, u64 capacity) {
-    if(stringBuilder->capacity == 0)
-        return false;
-
     if(stringBuilder->string.length > capacity)
-        return false;
-
-    if(capacity == 0)
         return false;
 
     if(stringBuilder->capacity == capacity)
         return true;
+
+    if(capacity == 0) {
+        str_destroy(stringBuilder->string);
+        stringBuilder->string = str_createEmpty();
+        stringBuilder->capacity = 0;
+        return true;
+    }
+
+    if(stringBuilder->capacity == 0) {
+        stringBuilder->string = str_createUninitialised(capacity);
+
+        if(str_isEmpty(stringBuilder->string)) {
+            stringBuilder->capacity = 0;
+            return false;
+        }
+
+        stringBuilder->string.length = 0;
+        stringBuilder->capacity = capacity;
+        return true;
+    }
 
     stringBuilder->string.data = realloc(stringBuilder->string.data, capacity);
     stringBuilder->capacity = capacity;
@@ -606,17 +618,10 @@ bool strbuilder_setCapacity(StringBuilder * stringBuilder, u64 capacity) {
 }
 
 bool strbuilder_ensureCapacity(StringBuilder * stringBuilder, u64 requiredCapacity) {
-    if(stringBuilder->capacity == 0)
-        return false;
-
     if(requiredCapacity <= stringBuilder->capacity)
         return true;
 
-    u64 newCapacity = stringBuilder->capacity;
-
-    while(newCapacity < requiredCapacity) {
-        newCapacity *= 2;
-    }
+    u64 newCapacity = u64_findNextPowerOf2(requiredCapacity);
 
     return strbuilder_setCapacity(stringBuilder, newCapacity);
 }
@@ -629,11 +634,8 @@ bool strbuilder_appendChar(StringBuilder * stringBuilder, char character) {
     if(!strbuilder_ensureCapacity(stringBuilder, stringBuilder->string.length + 1))
         return false;
 
-    u64 endIndex = stringBuilder->string.length;
-
+    str_set(stringBuilder->string, stringBuilder->string.length, character);
     stringBuilder->string.length += 1;
-
-    str_set(stringBuilder->string, endIndex, character);
 
     return true;
 }
@@ -642,13 +644,14 @@ bool strbuilder_appendString(StringBuilder * stringBuilder, String string) {
     if(!strbuilder_ensureCapacity(stringBuilder, stringBuilder->string.length + string.length))
         return false;
 
-    u64 endIndex = stringBuilder->string.length;
-
+    str_setChars(stringBuilder->string, stringBuilder->string.length, string);
     stringBuilder->string.length += string.length;
 
-    str_setChars(stringBuilder->string, endIndex, string);
-
     return true;
+}
+
+bool strbuilder_appendCString(StringBuilder * stringBuilder, char * string) {
+    return strbuilder_appendString(stringBuilder, str_create(string));
 }
 
 bool strbuilder_appendSubstring(StringBuilder * stringBuilder, String string, u64 start, u64 end) {

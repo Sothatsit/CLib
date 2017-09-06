@@ -17,32 +17,32 @@ typedef float f32;
 typedef double f64;
 
 /*
- * Get the maximum of num1 and num2.
+ * Get the maximum of {num1} and {num2}.
  */
 #define max(num1, num2) (num1 > num2 ? num1 : num2)
 
 /*
- * Get the minimum of num1 and num2.
+ * Get the minimum of {num1} and {num2}.
  */
 #define min(num1, num2) (num1 < num2 ? num1 : num2)
 
 /*
- * Round to the nearest power of 2.
+ * Find the next power of 2 greater than or equal to {number}.
  */
 u8 u8_findNextPowerOf2(u8 number);
 
 /*
- * Round to the nearest power of 2.
+ * Find the next power of 2 greater than or equal to {number}.
  */
 u16 u16_findNextPowerOf2(u16 number);
 
 /*
- * Round to the nearest power of 2.
+ * Find the next power of 2 greater than or equal to {number}.
  */
 u32 u32_findNextPowerOf2(u32 number);
 
 /*
- * Round to the nearest power of 2.
+ * Find the next power of 2 greater than or equal to {number}.
  */
 u64 u64_findNextPowerOf2(u64 number);
 

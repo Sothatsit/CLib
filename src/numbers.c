@@ -1,8 +1,5 @@
 #include "numbers.h"
 
-/*
- * Round to the nearest power of 2.
- */
 u8 u8_findNextPowerOf2(u8 n) {
     n--;
     n |= n >> 1;
@@ -11,9 +8,6 @@ u8 u8_findNextPowerOf2(u8 n) {
     return (u8) (n + 1);
 }
 
-/*
- * Round to the nearest power of 2.
- */
 u16 u16_findNextPowerOf2(u16 n) {
     n--;
     n |= n >> 1;
@@ -23,9 +17,6 @@ u16 u16_findNextPowerOf2(u16 n) {
     return (u16) (n + 1);
 }
 
-/*
- * Round to the nearest power of 2.
- */
 u32 u32_findNextPowerOf2(u32 n) {
     n--;
     n |= n >> 1;
@@ -36,9 +27,6 @@ u32 u32_findNextPowerOf2(u32 n) {
     return n + 1;
 }
 
-/*
- * Round to the nearest power of 2.
- */
 u64 u64_findNextPowerOf2(u64 n) {
     n--;
     n |= n >> 1;

@@ -273,9 +273,7 @@ String str_concat(String string1, String string2) {
 }
 
 String str_substring(String string, u64 start, u64 end) {
-    end = min(end, string.length);
-
-    if(end <= start)
+    if(start >= string.length || end > string.length || end <= start)
         return str_createEmpty();
 
     String substring;

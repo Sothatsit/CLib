@@ -1,3 +1,7 @@
 #!/usr/bin/env bash
 
-find $PWD/src $PWD/test | entr ./runtests.sh
+trap "exit;" SIGINT SIGTERM
+
+while true; do
+    find ./src ./test | entr -d ./test.sh
+done

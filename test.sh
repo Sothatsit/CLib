@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 
 clear
-if make; then
+if make test; then
     echo ""
-    ./testclib
+    ../build/test
 else
     echo -e "\x1B[31m\x1B[1m"
     echo "-------------------------------------"

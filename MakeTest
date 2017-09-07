@@ -1,0 +1,43 @@
+# Compiler
+CC = clang
+OPTS = -c -Wall
+
+# Target file
+TARGET = build/test
+
+# Directories
+SRCDIR   = src test
+BUILDDIR = build
+OBJDIR   = build/obj
+
+# Libraries
+LIBS = 
+
+# Files and folders
+SRCS    = $(shell find $(SRCDIR) -name '*.c')
+SRCDIRS = $(shell find . -name '*.c' | dirname {} | sort | uniq | sed 's/\/$(SRCDIR)//g' )
+OBJS    = $(patsubst $(SRCDIR)/%.c,$(OBJDIR)/%.o,$(SRCS))
+
+# Targets
+$(TARGET): buildrepo $(OBJS)
+	mkdir -p $(OBJDIR)
+	$(CC) $(OBJS) $(LIBS) -o $@
+	rm -Rf $(OBJDIR)
+
+$(OBJDIR)/%.o: $(SRCDIR)/%.c
+	$(CC) $(OPTS) $< -o $@
+
+clean:
+	rm -Rf $(TARGET) $(OBJDIR) $(BUILDDIR)
+
+buildrepo:
+	@$(call make-repo)
+
+# Create obj directory structure
+define make-repo
+	mkdir -p $(BUILDDIR)
+	for dir in $(SRCDIRS); \
+	do \
+		mkdir -p $(OBJDIR)/$$dir; \
+	done
+endef

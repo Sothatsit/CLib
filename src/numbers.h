@@ -13,9 +13,6 @@ typedef int16_t s16;
 typedef int32_t s32;
 typedef int32_t s64;
 
-typedef float  f32;
-typedef double f64;
-
 /*
  * Get the maximum of {num1} and {num2}.
  */

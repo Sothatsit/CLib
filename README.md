@@ -6,12 +6,12 @@ The documentation for these types can be found in their corresponding .h files.
 # String
 The String type provides methods for manipulating Strings that are not null-terminated.
 
-_Documentation in [string.h](src/string.h)_
+_Documentation in [string.h](src/string.h#L63)_
 
 # StringBuilder
 StringBuilder provides a way to efficiently build Strings of unknown length by allocating extra space before it is used.
 
-_Documentation in [string.h](src/string.h)_
+_Documentation in [string.h](src/string.h#L389)_
 
 # Number Types
 Provides several number types with unambiguous sizes.

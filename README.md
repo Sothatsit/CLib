@@ -53,3 +53,7 @@ The binary for the test program is outputted to [`build/test`](build/test) and c
 ```
 make test
 ```
+
+
+# :book: License
+CLib uses the [MIT](https://choosealicense.com/licenses/mit/) license.

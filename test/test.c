@@ -1,8 +1,10 @@
 #include "test.h"
+#include "testNumbers.h"
 #include "testString.h"
 #include "testStringBuilder.h"
 
 void test_all(int * failures, int * successes) {
+    test_numbers(failures, successes);
     test_String(failures, successes);
     test_StringBuilder(failures, successes);
 }

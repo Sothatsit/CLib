@@ -10,6 +10,8 @@ set(SOURCE_FILES
         src/string.c
         test/test.h
         test/test.c
+        test/testNumbers.h
+        test/testNumbers.c
         test/testString.h
         test/testString.c
         test/testStringBuilder.h

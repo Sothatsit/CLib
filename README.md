@@ -1,7 +1,7 @@
 # CLib
 CLib attempts to make tedious, common tasks in C less tedious.
 
-The .h files are all documented using block comments and should be used as a reference for the functionality of specific functions.
+The documentation for the features of CLib can all be found in their corresponding .h files.
 
 
 

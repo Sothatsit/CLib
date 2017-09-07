@@ -6,12 +6,12 @@ The documentation for these types can be found in their corresponding .h files.
 # String
 The String type provides methods for manipulating Strings that are not null-terminated.
 
-_Documentation in string.h_
+_Documentation in [string.h](src/string.h)_
 
 # StringBuilder
 StringBuilder provides a way to efficiently build Strings of unknown length by allocating extra space before it is used.
 
-_Documentation in string.h_
+_Documentation in [string.h](src/string.h)_
 
 # Number Types
 Provides several number types with unambiguous sizes.
@@ -28,4 +28,4 @@ _s64_ : Signed 64 bit integer <br />
 _f32_ : 32 bit floating point number <br />
 _f64_ : 64 bit floating point number
 
-_Documentation in numbers.h_
+_Documentation in [numbers.h](src/numbers.h)_

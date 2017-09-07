@@ -4,7 +4,8 @@ CLib attempts to make tedious, common tasks in C less tedious.
 The .h files are all documented using block comments and should be used as a reference for the functionality of specific functions.
 
 
-# Features
+
+# :rocket: Features
 ### String
 The String type provides methods for manipulating Strings that are not null-terminated.
 
@@ -16,7 +17,7 @@ StringBuilder provides a way to efficiently build Strings of unknown length by a
 _Documentation in [string.h](src/string.h#L389)_
 
 ### Number Types
-Provides several number types with unambiguous sizes as well as a few.
+Provides several number types with unambiguous sizes as well as a few maths functions using these types.
 
 **The number types are:** <br />
 _u8_  : Unsigned 8 bit integer <br />
@@ -31,7 +32,8 @@ _s64_ : Signed 64 bit integer
 _Documentation in [numbers.h](src/numbers.h)_
 
 
-# Testing
+
+# :microscope: Testing
 ### Automatically running tests:
 The script [`looptests.sh`](looptests.sh) will automatically re-run the tests when ever any source files change and can be used as follows:
 ```

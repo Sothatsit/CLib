@@ -1,6 +1,6 @@
 # Compiler
 CC = clang
-OPTS = -c -Wall
+OPTS = -Wall -Werror
 
 # Target file
 TARGET = build/test
@@ -21,7 +21,7 @@ OBJS    = $(patsubst $(SRCDIR)/%.c,$(OBJDIR)/%.o,$(SRCS))
 # Targets
 $(TARGET): buildrepo $(OBJS)
 	mkdir -p $(OBJDIR)
-	$(CC) $(OBJS) $(LIBS) -o $@
+	$(CC) $(OBJS) $(LIBS) $(OPTS) -o $@
 	rm -Rf $(OBJDIR)
 
 $(OBJDIR)/%.o: $(SRCDIR)/%.c

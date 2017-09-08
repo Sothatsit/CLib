@@ -3,7 +3,7 @@
 clear
 if make test; then
     echo ""
-    ../build/test
+    ./build/test
 else
     echo -e "\x1B[31m\x1B[1m"
     echo "-------------------------------------"

@@ -2,11 +2,13 @@
 #include "testNumbers.h"
 #include "testString.h"
 #include "testStringBuilder.h"
+#include "testExamples.h"
 
 void test_all(int * failures, int * successes) {
     test_numbers(failures, successes);
     test_String(failures, successes);
     test_StringBuilder(failures, successes);
+    test_examples(failures, successes);
 }
 
 int main(int argc, char *argv[]) {

@@ -305,6 +305,10 @@ String str_replaceString(String string, String find, String replacement) {
     return stringBuilder.string;
 }
 
+String str_replaceCString(String string, char * find, char * replacement) {
+    return str_replaceString(string, str_create(find), str_create(replacement));
+}
+
 String str_replaceStringInPlace(String string, String find, String replacement) {
     if(replacement.length > find.length)
         return str_createEmpty();
@@ -354,6 +358,10 @@ String str_replaceStringInPlace(String string, String find, String replacement) 
 
         return modified;
     }
+}
+
+String str_replaceCStringInPlace(String string, char * find, char * replacement) {
+    return str_replaceStringInPlace(string, str_create(find), str_create(replacement));
 }
 
 String str_concat(String string1, String string2) {
@@ -426,16 +434,20 @@ String str_splitAt(String * remaining, s64 index, u64 delimiterLength) {
     return splitPart;
 }
 
-String str_splitAtFirstChar(String * remaining, char find) {
+String str_splitAtChar(String * remaining, char find) {
     s64 index = str_indexOfChar(*remaining, find);
 
     return str_splitAt(remaining, index, 1);
 }
 
-String str_splitAtFirstString(String * remaining, String find) {
-    s64 index = str_indexOfString(*remaining, find);
+String str_splitAtString(String * remaining, String delimiter) {
+    s64 index = str_indexOfString(*remaining, delimiter);
 
-    return str_splitAt(remaining, index, find.length);
+    return str_splitAt(remaining, index, delimiter.length);
+}
+
+String str_splitAtCString(String * remaining, char * delimiter) {
+    return str_splitAtString(remaining, str_create(delimiter));
 }
 
 String str_UCSCodepointToUTF8(u32 codepoint) {

@@ -559,6 +559,26 @@ bool test_str_replaceString() {
     return true;
 }
 
+bool test_str_replaceCString() {
+    String apples = str_createCopy("Everyone likes apples, apples are the best, yay apples");
+    String pineapples = str_createCopy("Everyone likes pineapples, pineapples are the best, yay pineapples");
+    String replaced;
+    {
+        assertStrValid(apples);
+        assertStrValid(pineapples);
+
+        replaced = str_replaceCString(apples, "apple", "pineapple");
+
+        assertStrValid(replaced);
+        assert(str_equals(replaced, pineapples));
+    }
+    str_destroy(apples);
+    str_destroy(pineapples);
+    str_destroy(replaced);
+
+    return true;
+}
+
 bool test_str_replaceStringInPlace() {
     String pineapples = str_createCopy("Everyone likes pineapples, pineapples are the best, yay pineapples");
     String apples = str_createCopy("Everyone likes apples, apples are the best, yay apples");
@@ -567,6 +587,23 @@ bool test_str_replaceStringInPlace() {
         assertStrValid(apples);
 
         pineapples = str_replaceStringInPlace(pineapples, str_create("pineapple"), str_create("apple"));
+
+        assert(str_equals(pineapples, apples));
+    }
+    str_destroy(apples);
+    str_destroy(pineapples);
+
+    return true;
+}
+
+bool test_str_replaceCStringInPlace() {
+    String pineapples = str_createCopy("Everyone likes pineapples, pineapples are the best, yay pineapples");
+    String apples = str_createCopy("Everyone likes apples, apples are the best, yay apples");
+    {
+        assertStrValid(pineapples);
+        assertStrValid(apples);
+
+        pineapples = str_replaceCStringInPlace(pineapples, "pineapple", "apple");
 
         assert(str_equals(pineapples, apples));
     }
@@ -697,7 +734,7 @@ bool test_str_splitAt() {
     return true;
 }
 
-bool test_str_splitAtFirstChar() {
+bool test_str_splitAtChar() {
     String originalString = str_createCopy("Apple, dream, bottle, paper, phone");
     String expectedFirst = str_createCopy("Apple");
     String expectedSecond = str_createCopy(" dream");
@@ -708,8 +745,8 @@ bool test_str_splitAtFirstChar() {
         assertStrValid(expectedSecond);
 
         String third = originalString;
-        String first = str_splitAtFirstChar(&third, ',');
-        String second = str_splitAtFirstChar(&third, ',');
+        String first = str_splitAtChar(&third, ',');
+        String second = str_splitAtChar(&third, ',');
 
         assertStrValid(first);
         assertStrValid(second);
@@ -727,7 +764,7 @@ bool test_str_splitAtFirstChar() {
     return true;
 }
 
-bool test_str_splitAtFirstString() {
+bool test_str_splitAtString() {
     String originalString = str_createCopy("Apple, dream, bottle, paper, phone");
     String delimiter = str_createCopy(", ");
     String expectedFirst = str_createCopy("Apple");
@@ -739,8 +776,8 @@ bool test_str_splitAtFirstString() {
         assertStrValid(expectedSecond);
 
         String third = originalString;
-        String first = str_splitAtFirstString(&third, delimiter);
-        String second = str_splitAtFirstString(&third, delimiter);
+        String first = str_splitAtString(&third, delimiter);
+        String second = str_splitAtString(&third, delimiter);
 
         assertStrValid(first);
         assertStrValid(second);
@@ -752,6 +789,36 @@ bool test_str_splitAtFirstString() {
     }
     str_destroy(originalString);
     str_destroy(delimiter);
+    str_destroy(expectedFirst);
+    str_destroy(expectedSecond);
+    str_destroy(expectedThird);
+
+    return true;
+}
+
+bool test_str_splitAtCString() {
+    String originalString = str_createCopy("Apple, dream, bottle, paper, phone");
+    String expectedFirst = str_createCopy("Apple");
+    String expectedSecond = str_createCopy("dream");
+    String expectedThird = str_createCopy("bottle, paper, phone");
+    {
+        assertStrValid(originalString);
+        assertStrValid(expectedFirst);
+        assertStrValid(expectedSecond);
+
+        String third = originalString;
+        String first = str_splitAtCString(&third, ", ");
+        String second = str_splitAtCString(&third, ", ");
+
+        assertStrValid(first);
+        assertStrValid(second);
+        assertStrValid(third);
+
+        assert(str_equals(expectedFirst, first));
+        assert(str_equals(expectedSecond, second));
+        assert(str_equals(expectedThird, third));
+    }
+    str_destroy(originalString);
     str_destroy(expectedFirst);
     str_destroy(expectedSecond);
     str_destroy(expectedThird);
@@ -864,14 +931,17 @@ void test_String(int * failures, int * successes) {
     test(str_setChars);
     test(str_replaceChar);
     test(str_replaceString);
+    test(str_replaceCString);
     test(str_replaceStringInPlace);
+    test(str_replaceCStringInPlace);
     test(str_concat);
     test(str_substring);
     test(str_trim);
     test(str_trimLeading);
     test(str_trimTrailing);
     test(str_splitAt);
-    test(str_splitAtFirstChar);
-    test(str_splitAtFirstString);
+    test(str_splitAtChar);
+    test(str_splitAtString);
+    test(str_splitAtCString);
     test(str_UCSCodepointToUTF8);
 }

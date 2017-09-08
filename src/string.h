@@ -294,6 +294,15 @@ void str_replaceChar(String string, char find, char replacement);
 String str_replaceString(String string, String find, String replacement);
 
 /*
+ * Replace all occurences of {find} in {string} with {replacement}.
+ *
+ * This will return a new String. This new String should be destroyed when it's no longer in use.
+ *
+ * Will return an empty String on failure.
+ */
+String str_replaceCString(String string, char * find, char * replacement);
+
+/*
  * Replace all occurences of {find} in {string} with {replacement}, modifying {string}.
  *
  * Requires that the length of {find} is greater than or equal to the length of {replacement}.
@@ -301,6 +310,15 @@ String str_replaceString(String string, String find, String replacement);
  * Will return an empty String on failure.
  */
 String str_replaceStringInPlace(String string, String find, String replacement);
+
+/*
+ * Replace all occurences of {find} in {string} with {replacement}, modifying {string}.
+ *
+ * Requires that the length of {find} is greater than or equal to the length of {replacement}.
+ *
+ * Will return an empty String on failure.
+ */
+String str_replaceCStringInPlace(String string, char * find, char * replacement);
 
 /*
  * Concatenate {string1} and {string2} into a new String.
@@ -366,16 +384,25 @@ String str_splitAt(String * remaining, s64 index, u64 delimiterLength);
  * If {find} is not found, {remaining} will be returned and {remaining} will be set to an empty String.
  * Therefore, if {remaining} is empty, there are no more occurences of {find} in the String.
  */
-String str_splitAtFirstChar(String * remaining, char find);
+String str_splitAtChar(String *remaining, char delimiter);
 
 /*
- * Returns a substring of {remaining} from its start to the first occurence of {find}.
- * Sets {remaining} to a substring of {remaining} after the first occurence of {find}.
+ * Returns a substring of {remaining} from its start to the first occurence of {delimiter}.
+ * Sets {remaining} to a substring of {remaining} after the first occurence of {delimiter}.
  *
- * If {find} is not found, {remaining} will be returned and {remaining} will be set to an empty String.
- * Therefore, if {remaining} is empty, there are no more occurences of {find} in the String.
+ * If {delimiter} is not found, {remaining} will be returned and {remaining} will be set to an empty String.
+ * Therefore, if {remaining} is empty, there are no more occurences of {delimiter} in the String.
  */
-String str_splitAtFirstString(String * remaining, String find);
+String str_splitAtString(String *remaining, String delimiter);
+
+/*
+ * Returns a substring of {remaining} from its start to the first occurence of {delimiter}.
+ * Sets {remaining} to a substring of {remaining} after the first occurence of {delimiter}.
+ *
+ * If {delimiter} is not found, {remaining} will be returned and {remaining} will be set to an empty String.
+ * Therefore, if {remaining} is empty, there are no more occurences of {delimiter} in the String.
+ */
+String str_splitAtCString(String * remaining, char * delimiter);
 
 /*
  * Construct a UTF-8 String from the character in the UCS codepoint.

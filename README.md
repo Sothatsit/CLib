@@ -6,7 +6,7 @@ The documentation for the features of CLib can all be found in their correspondi
 
 
 # :rocket: Features
-### String
+## String
 The String type provides methods for manipulating Strings that are not null-terminated.
 
 **Example** : _Formats and splitting_
@@ -35,7 +35,7 @@ url: https://github.com/Sothatsit/CLib
 
 _Documentation in [string.h](src/string.h#L63)_
 
-### StringBuilder
+## StringBuilder
 StringBuilder provides a way to efficiently build Strings of unknown length by allocating extra space before it is used.
 
 **Example** : _Comma seperated array_ <br />
@@ -65,7 +65,7 @@ Fruits: [Apple, Banana, Cumquat, Dragon fruit, Eggplant]
 
 _Documentation in [string.h](src/string.h#L389)_
 
-### Number Types
+## Number Types
 Provides several number types with unambiguous sizes as well as a few maths functions using these types.
 
 **The number types are:** <br />
@@ -83,21 +83,21 @@ _Documentation in [numbers.h](src/numbers.h)_
 
 
 # :microscope: Testing
-### Automatically running tests:
+## Automatically running tests:
 The script [`looptests.sh`](looptests.sh) will automatically re-run the tests when ever any source files change and can be used as follows:
 ```
 cd <CLib base directory>
 ./looptests.sh
 ```
 
-### Manually running tests:
+## Manually running tests:
 The script [`test.sh`](test.sh) will compile and run the tests once and can be used as follows:
 ```
 cd <CLib base directory>
 ./test.sh
 ```
 
-### Compiling the test binary:
+## Compiling the test binary:
 The binary for the test program is outputted to `build/test` and can be built using:
 ```
 cd <CLib base directory>

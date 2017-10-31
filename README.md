@@ -98,7 +98,7 @@ cd <CLib base directory>
 ```
 
 ## Compiling the test binary:
-The binary for the test program is outputted to `build/test` and can be built using:
+The binary for the test program is outputted to `buildtest/test` and can be built using:
 ```
 cd <CLib base directory>
 make test

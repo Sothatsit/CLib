@@ -1,8 +1,6 @@
 #include "test.h"
 #include "testString.h"
 
-#include "../src/string.h"
-
 
 
 //
@@ -35,7 +33,7 @@ bool test_str_createCopy() {
         assert(str_equals(johnDoe, johnDoeCopy));
         assert(johnDoe.data != johnDoeCopy.data);
     }
-    str_destroy(johnDoeCopy);
+    str_destroy(&johnDoeCopy);
 
     return true;
 }
@@ -66,7 +64,7 @@ bool test_str_createCopyOfLength() {
         assert(str_equals(string1, string2));
         assert(string1.data != string2.data);
     }
-    str_destroy(string2);
+    str_destroy(&string2);
 
     return true;
 }
@@ -85,8 +83,8 @@ bool test_str_createUninitialised() {
 
         assert(str_equals(string, expected));
     }
-    str_destroy(string);
-    str_destroy(expected);
+    str_destroy(&string);
+    str_destroy(&expected);
 
     return true;
 }
@@ -96,7 +94,7 @@ bool test_str_createEmpty() {
     {
         assert(empty.length == 0);
     }
-    str_destroy(empty);
+    str_destroy(&empty);
 
     return true;
 }
@@ -110,8 +108,8 @@ bool test_str_isEmpty() {
         assert(str_isEmpty(empty));
         assert(!str_isEmpty(nonEmpty));
     }
-    str_destroy(empty);
-    str_destroy(nonEmpty);
+    str_destroy(&empty);
+    str_destroy(&nonEmpty);
 
     return true;
 }
@@ -128,7 +126,7 @@ bool test_str_toCString() {
 
         assert(strcmp("John Doe", nullTerminated) == 0);
     }
-    str_destroy(johnDoe);
+    str_destroy(&johnDoe);
     free(nullTerminated);
 
     return true;
@@ -143,8 +141,8 @@ bool test_str_format() {
 
         assert(str_equals(formatted, expected));
     }
-    str_destroy(formatted);
-    str_destroy(expected);
+    str_destroy(&formatted);
+    str_destroy(&expected);
 
     return true;
 }
@@ -169,8 +167,8 @@ bool test_str_vformat() {
 
         assert(str_equals(formatted, expected));
     }
-    str_destroy(formatted);
-    str_destroy(expected);
+    str_destroy(&formatted);
+    str_destroy(&expected);
 
     return true;
 }
@@ -184,7 +182,7 @@ bool test_str_copy() {
 
         assert(str_equals(johnDoe, johnDoeCopy));
     }
-    str_destroy(johnDoeCopy);
+    str_destroy(&johnDoeCopy);
 
     return true;
 }
@@ -205,10 +203,10 @@ bool test_str_equals() {
         assert(!str_equals(johnDoe, johnPaul));
         assert(!str_equals(johnPaul, johnDoe));
     }
-    str_destroy(bob);
-    str_destroy(jeff);
-    str_destroy(johnDoe);
-    str_destroy(johnPaul);
+    str_destroy(&bob);
+    str_destroy(&jeff);
+    str_destroy(&johnDoe);
+    str_destroy(&johnPaul);
 
     return true;
 }
@@ -229,10 +227,10 @@ bool test_str_startsWith() {
         assert(!str_startsWith(johnDoe, johnPaul));
         assert(!str_startsWith(johnPaul, johnDoe));
     }
-    str_destroy(bob);
-    str_destroy(jeff);
-    str_destroy(johnDoe);
-    str_destroy(johnPaul);
+    str_destroy(&bob);
+    str_destroy(&jeff);
+    str_destroy(&johnDoe);
+    str_destroy(&johnPaul);
 
     return true;
 }
@@ -259,10 +257,10 @@ bool test_str_endsWith() {
         assert(!str_endsWith(johnDoe, johnPaul));
         assert(!str_endsWith(johnPaul, johnDoe));
     }
-    str_destroy(bob);
-    str_destroy(jeff);
-    str_destroy(johnDoe);
-    str_destroy(johnPaul);
+    str_destroy(&bob);
+    str_destroy(&jeff);
+    str_destroy(&johnDoe);
+    str_destroy(&johnPaul);
 
     return true;
 }
@@ -278,7 +276,7 @@ bool test_str_get() {
         assert(str_get(johnDoe, 5) == 'D');
         assert(str_get(johnDoe, 7) == 'e');
     }
-    str_destroy(johnDoe);
+    str_destroy(&johnDoe);
 
     return true;
 }
@@ -292,7 +290,7 @@ bool test_str_indexOfChar() {
         assert(str_indexOfChar(names, 'a') == 15);
         assert(str_indexOfChar(names, '\0') == 13);
     }
-    str_destroy(names);
+    str_destroy(&names);
 
     return true;
 }
@@ -312,10 +310,10 @@ bool test_str_indexOfString() {
         assert(str_indexOfString(names, jon) == 20);
         assert(str_indexOfString(names, arya) == 37);
     }
-    str_destroy(names);
-    str_destroy(littleFinger);
-    str_destroy(jon);
-    str_destroy(arya);
+    str_destroy(&names);
+    str_destroy(&littleFinger);
+    str_destroy(&jon);
+    str_destroy(&arya);
 
     return true;
 }
@@ -329,7 +327,7 @@ bool test_str_indexOfCharAfterIndex() {
         assert(str_indexOfCharAfterIndex(names, 'a', 16) == 33);
         assert(str_indexOfCharAfterIndex(names, '\0', 15) == 19);
     }
-    str_destroy(names);
+    str_destroy(&names);
 
     return true;
 }
@@ -351,9 +349,9 @@ bool test_str_indexOfStringAfterIndex() {
 
         assert(str_indexOfStringAfterIndex(names, str_createEmpty(), 5) == 6);
     }
-    str_destroy(names);
-    str_destroy(littleFinger);
-    str_destroy(arya);
+    str_destroy(&names);
+    str_destroy(&littleFinger);
+    str_destroy(&arya);
 
     return true;
 }
@@ -367,7 +365,7 @@ bool test_str_lastIndexOfChar() {
         assert(str_lastIndexOfChar(names, 'a') == 41);
         assert(str_lastIndexOfChar(names, '\0') == 37);
     }
-    str_destroy(names);
+    str_destroy(&names);
 
     return true;
 }
@@ -387,10 +385,10 @@ bool test_str_lastIndexOfString() {
         assert(str_lastIndexOfString(names, tyrrion) == 33);
         assert(str_lastIndexOfString(names, arya) == 46);
     }
-    str_destroy(names);
-    str_destroy(littleFinger);
-    str_destroy(tyrrion);
-    str_destroy(arya);
+    str_destroy(&names);
+    str_destroy(&littleFinger);
+    str_destroy(&tyrrion);
+    str_destroy(&arya);
 
     return true;
 }
@@ -406,7 +404,7 @@ bool test_str_containsChar() {
         assert(!str_containsChar(jeff, 'F'));
         assert(str_containsChar(jeff, '\0'));
     }
-    str_destroy(jeff);
+    str_destroy(&jeff);
 
     return true;
 }
@@ -430,11 +428,11 @@ bool test_str_containsString() {
         assert(str_containsString(jeff, withNull));
         assert(!str_containsString(jeff, differentAfterNull));
     }
-    str_destroy(jeff);
-    str_destroy(bob);
-    str_destroy(jess);
-    str_destroy(withNull);
-    str_destroy(differentAfterNull);
+    str_destroy(&jeff);
+    str_destroy(&bob);
+    str_destroy(&jess);
+    str_destroy(&withNull);
+    str_destroy(&differentAfterNull);
 
     return true;
 }
@@ -450,8 +448,8 @@ bool test_str_toUppercase() {
 
         assert(str_equals(string, expected));
     }
-    str_destroy(string);
-    str_destroy(expected);
+    str_destroy(&string);
+    str_destroy(&expected);
 
     return true;
 }
@@ -467,8 +465,8 @@ bool test_str_toLowercase() {
 
         assert(str_equals(string, expected));
     }
-    str_destroy(string);
-    str_destroy(expected);
+    str_destroy(&string);
+    str_destroy(&expected);
 
     return true;
 }
@@ -492,8 +490,8 @@ bool test_str_set() {
 
         assert(str_equals(billy, expected));
     }
-    str_destroy(billy);
-    str_destroy(expected);
+    str_destroy(&billy);
+    str_destroy(&expected);
 
     return true;
 }
@@ -514,10 +512,10 @@ bool test_str_setChars() {
 
         assert(str_equals(string, expected));
     }
-    str_destroy(string);
-    str_destroy(jeff);
-    str_destroy(bob);
-    str_destroy(expected);
+    str_destroy(&string);
+    str_destroy(&jeff);
+    str_destroy(&bob);
+    str_destroy(&expected);
 
     return true;
 }
@@ -533,8 +531,8 @@ bool test_str_replaceChar() {
 
         assert(str_equals(mississippi, expected));
     }
-    str_destroy(mississippi);
-    str_destroy(expected);
+    str_destroy(&mississippi);
+    str_destroy(&expected);
 
     return true;
 }
@@ -552,9 +550,9 @@ bool test_str_replaceString() {
         assertStrValid(replaced);
         assert(str_equals(replaced, pineapples));
     }
-    str_destroy(apples);
-    str_destroy(pineapples);
-    str_destroy(replaced);
+    str_destroy(&apples);
+    str_destroy(&pineapples);
+    str_destroy(&replaced);
 
     return true;
 }
@@ -572,9 +570,9 @@ bool test_str_replaceCString() {
         assertStrValid(replaced);
         assert(str_equals(replaced, pineapples));
     }
-    str_destroy(apples);
-    str_destroy(pineapples);
-    str_destroy(replaced);
+    str_destroy(&apples);
+    str_destroy(&pineapples);
+    str_destroy(&replaced);
 
     return true;
 }
@@ -590,8 +588,8 @@ bool test_str_replaceStringInPlace() {
 
         assert(str_equals(pineapples, apples));
     }
-    str_destroy(apples);
-    str_destroy(pineapples);
+    str_destroy(&apples);
+    str_destroy(&pineapples);
 
     return true;
 }
@@ -607,8 +605,8 @@ bool test_str_replaceCStringInPlace() {
 
         assert(str_equals(pineapples, apples));
     }
-    str_destroy(apples);
-    str_destroy(pineapples);
+    str_destroy(&apples);
+    str_destroy(&pineapples);
 
     return true;
 }
@@ -628,10 +626,10 @@ bool test_str_concat() {
         assertStrValid(added);
         assert(str_equals(added, expected));
     }
-    str_destroy(a);
-    str_destroy(b);
-    str_destroy(added);
-    str_destroy(expected);
+    str_destroy(&a);
+    str_destroy(&b);
+    str_destroy(&added);
+    str_destroy(&expected);
 
     return true;
 }
@@ -647,8 +645,8 @@ bool test_str_substring() {
 
         assert(str_equals(substring, expected));
     }
-    str_destroy(string);
-    str_destroy(expected);
+    str_destroy(&string);
+    str_destroy(&expected);
 
     return true;
 }
@@ -664,8 +662,8 @@ bool test_str_trim() {
 
         assert(str_equals(trimmed, expected));
     }
-    str_destroy(string);
-    str_destroy(expected);
+    str_destroy(&string);
+    str_destroy(&expected);
 
     return true;
 }
@@ -681,8 +679,8 @@ bool test_str_trimLeading() {
 
         assert(str_equals(trimmed, expected));
     }
-    str_destroy(string);
-    str_destroy(expected);
+    str_destroy(&string);
+    str_destroy(&expected);
 
     return true;
 }
@@ -699,8 +697,8 @@ bool test_str_trimTrailing() {
         assertStrValid(trimmed);
         assert(str_equals(trimmed, expected));
     }
-    str_destroy(string);
-    str_destroy(expected);
+    str_destroy(&string);
+    str_destroy(&expected);
 
     return true;
 }
@@ -727,9 +725,9 @@ bool test_str_splitAt() {
         assert(str_equals(expectedSecond, second));
         assert(str_equals(expectedThird, third));
     }
-    str_destroy(originalString);
-    str_destroy(expectedFirst);
-    str_destroy(expectedSecond);
+    str_destroy(&originalString);
+    str_destroy(&expectedFirst);
+    str_destroy(&expectedSecond);
 
     return true;
 }
@@ -756,10 +754,10 @@ bool test_str_splitAtChar() {
         assert(str_equals(expectedSecond, second));
         assert(str_equals(expectedThird, third));
     }
-    str_destroy(originalString);
-    str_destroy(expectedFirst);
-    str_destroy(expectedSecond);
-    str_destroy(expectedThird);
+    str_destroy(&originalString);
+    str_destroy(&expectedFirst);
+    str_destroy(&expectedSecond);
+    str_destroy(&expectedThird);
 
     return true;
 }
@@ -787,11 +785,11 @@ bool test_str_splitAtString() {
         assert(str_equals(expectedSecond, second));
         assert(str_equals(expectedThird, third));
     }
-    str_destroy(originalString);
-    str_destroy(delimiter);
-    str_destroy(expectedFirst);
-    str_destroy(expectedSecond);
-    str_destroy(expectedThird);
+    str_destroy(&originalString);
+    str_destroy(&delimiter);
+    str_destroy(&expectedFirst);
+    str_destroy(&expectedSecond);
+    str_destroy(&expectedThird);
 
     return true;
 }
@@ -818,73 +816,10 @@ bool test_str_splitAtCString() {
         assert(str_equals(expectedSecond, second));
         assert(str_equals(expectedThird, third));
     }
-    str_destroy(originalString);
-    str_destroy(expectedFirst);
-    str_destroy(expectedSecond);
-    str_destroy(expectedThird);
-
-    return true;
-}
-
-bool test_str_UCSCodepointToUTF8() {
-    String utf = str_createUninitialised(1);
-    String converted;
-    {
-        assertStrValid(utf);
-
-        str_set(utf, 0, (char) 0b00100100);
-
-        converted = str_UCSCodepointToUTF8(0b0100100);
-
-        assert(str_equals(utf, converted));
-    }
-    str_destroy(utf);
-    str_destroy(converted);
-
-    utf = str_createUninitialised(2);
-    {
-        assertStrValid(utf);
-
-        str_set(utf, 0, (char) 0b11000010);
-        str_set(utf, 1, (char) 0b10100010);
-
-        converted = str_UCSCodepointToUTF8(0b00010100010);
-
-        assert(str_equals(utf, converted));
-    }
-    str_destroy(utf);
-    str_destroy(converted);
-
-    utf = str_createUninitialised(3);
-    {
-        assertStrValid(utf);
-
-        str_set(utf, 0, (char) 0b11100010);
-        str_set(utf, 1, (char) 0b10000010);
-        str_set(utf, 2, (char) 0b10101100);
-
-        converted = str_UCSCodepointToUTF8(0b0010000010101100);
-
-        assert(str_equals(utf, converted));
-    }
-    str_destroy(utf);
-    str_destroy(converted);
-
-    utf = str_createUninitialised(4);
-    {
-        assertStrValid(utf);
-
-        str_set(utf, 0, (char) 0b11110000);
-        str_set(utf, 1, (char) 0b10010000);
-        str_set(utf, 2, (char) 0b10001101);
-        str_set(utf, 3, (char) 0b10001000);
-
-        converted = str_UCSCodepointToUTF8(0b000010000001101001000);
-
-        assert(str_equals(utf, converted));
-    }
-    str_destroy(utf);
-    str_destroy(converted);
+    str_destroy(&originalString);
+    str_destroy(&expectedFirst);
+    str_destroy(&expectedSecond);
+    str_destroy(&expectedThird);
 
     return true;
 }
@@ -896,7 +831,6 @@ bool test_str_UCSCodepointToUTF8() {
 //
 
 void test_String(int * failures, int * successes) {
-
     test(str_create);
     test(str_createCopy);
     test(str_createOfLength);
@@ -943,5 +877,4 @@ void test_String(int * failures, int * successes) {
     test(str_splitAtChar);
     test(str_splitAtString);
     test(str_splitAtCString);
-    test(str_UCSCodepointToUTF8);
 }

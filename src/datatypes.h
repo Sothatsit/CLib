@@ -1,10 +1,71 @@
-#ifndef __CLIB_string_h
-#define __CLIB_string_h
-
-#include "numbers.h"
+#ifndef __CLIB_datatypes_h
+#define __CLIB_datatypes_h
 
 #include <stdbool.h>
+#include <stdlib.h>
 #include <stdarg.h>
+
+//
+// Colours
+//
+
+#define RESET    "\x1B[0m"
+#define BOLD     "\x1B[1m"
+#define RED      "\x1B[31m"
+#define GREEN    "\x1B[32m"
+#define YELLOW   "\x1B[33m"
+#define BLUE     "\x1B[34m"
+#define MAGENTA  "\x1B[35m"
+#define CYAN     "\x1B[36m"
+#define WHITE    "\x1B[37m"
+
+
+
+//
+// Numbers
+//
+
+typedef uint8_t  u8;
+typedef uint16_t u16;
+typedef uint32_t u32;
+typedef uint64_t u64;
+
+typedef int8_t  s8;
+typedef int16_t s16;
+typedef int32_t s32;
+typedef int32_t s64;
+
+/*
+ * Get the maximum of {num1} and {num2}.
+ */
+#define max(num1, num2) (num1 > num2 ? num1 : num2)
+
+/*
+ * Get the minimum of {num1} and {num2}.
+ */
+#define min(num1, num2) (num1 < num2 ? num1 : num2)
+
+/*
+ * Find the next power of 2 greater than or equal to {number}.
+ */
+u8 u8_findNextPowerOf2(u8 number);
+
+/*
+ * Find the next power of 2 greater than or equal to {number}.
+ */
+u16 u16_findNextPowerOf2(u16 number);
+
+/*
+ * Find the next power of 2 greater than or equal to {number}.
+ */
+u32 u32_findNextPowerOf2(u32 number);
+
+/*
+ * Find the next power of 2 greater than or equal to {number}.
+ */
+u64 u64_findNextPowerOf2(u64 number);
+
+
 
 //
 // Characters
@@ -67,9 +128,7 @@
 /*
  * A blob of data of a set length of chars.
  */
-typedef struct String String;
-
-struct String {
+typedef struct String {
     /*
      * The pointer to the start of the blob of data.
      */
@@ -79,7 +138,7 @@ struct String {
      * The length, in chars, of the blob of data.
      */
     u64 length;
-};
+} String;
 
 /*
  * Create a String from the C string {data}.
@@ -144,7 +203,7 @@ bool str_isEmpty(String string);
  * If {string} is a substring of another String, the result of this operation is
  * undefined and may error. The original String should be destroyed instead.
  */
-void str_destroy(String string);
+void str_destroy(String * string);
 
 /*
  * Creates a null terminated version of {string}.
@@ -405,11 +464,11 @@ String str_splitAtString(String *remaining, String delimiter);
 String str_splitAtCString(String * remaining, char * delimiter);
 
 /*
- * Construct a UTF-8 String from the character in the UCS codepoint.
+ * Load a file into a String.
  *
  * Will return an empty String on failure.
  */
-String str_UCSCodepointToUTF8(u32 codepoint);
+String str_readFile(char *filename);
 
 
 
@@ -420,7 +479,7 @@ String str_UCSCodepointToUTF8(u32 codepoint);
 /*
  * A utility for creating Strings of unknown length.
  */
-struct StringBuilder {
+typedef struct StringBuilder {
     /*
      * The underlying String that is being built.
      *
@@ -436,9 +495,7 @@ struct StringBuilder {
      * The current capacity that the StringBuilder can hold before it has to expand.
      */
     u64 capacity;
-};
-
-typedef struct StringBuilder StringBuilder;
+} StringBuilder;
 
 /*
  * Creates a new StringBuilder with initial capacity {initialSize}.
@@ -450,9 +507,9 @@ StringBuilder strbuilder_create(u64 initialSize);
 /*
  * Destroy {stringBuilder}.
  *
- * As {stringBuilder}.string and {stringBuilder} share the same data, only one of these should be destroyed.
+ * As {stringBuilder}->string and {stringBuilder} share the same data, only one of these should be destroyed.
  */
-void strbuilder_destroy(StringBuilder stringBuilder);
+void strbuilder_destroy(StringBuilder * stringBuilder);
 
 /*
  * Returns a copy of the String in {stringBuilder}.
@@ -477,7 +534,7 @@ bool strbuilder_ensureCapacity(StringBuilder * stringBuilder, u64 requiredCapaci
 /*
  * Attempts to reduce the capacity of {stringBuilder} so it is equal to the length of its contents.
  *
- * Returns whether reducing the capacity to the length of its was successful.
+ * Returns whether reducing the capacity to its length was successful.
  */
 bool strbuilder_trimToLength(StringBuilder * stringBuilder);
 
@@ -506,5 +563,319 @@ bool strbuilder_appendCString(StringBuilder * stringBuilder, char * string);
  * Will append a substring of {string} between {start} and {end} to {stringBuilder}.
  */
 bool strbuilder_appendSubstring(StringBuilder * stringBuilder, String string, u64 start, u64 end);
+
+
+
+//
+// Unicode
+//
+
+/*
+ * Read a Unicode codepoint from the start of the UTF-8 String {remaining}, modifiying
+ * {remaining} to be a substring not including the character that was read.
+ *
+ * Will return 0 on failure or if the first character is the null character.
+ */
+u32 utf8_toCodepoint(String * remaining);
+
+/*
+ * Construct a UTF-8 String from the character in the Unicode codepoint {codepoint}.
+ *
+ * Will return an empty String on failure.
+ */
+String utf8_fromCodepoint(u32 codepoint);
+
+/*
+ * Append the Unicode codepoint {codepoint} in UTF-8 into {builder}.
+ *
+ * Returns whether it was successful.
+ */
+bool utf8_appendCodepoint(StringBuilder * builder, u32 codepoint);
+
+/*
+ * Read a Unicode codepoint from the start of the UTF-16LE String {remaining}, modifiying
+ * {remaining} to be a substring not including the character that was read.
+ *
+ * Will return 0 on failure or if the first character is the null character.
+ */
+u32 utf16le_toCodepoint(String * remaining);
+
+/*
+ * Construct a UTF-16LE String containing the codepoint {codepoint}.
+ *
+ * Will return an empty String on failure.
+ */
+String utf16le_fromCodepoint(u32 codepoint);
+
+/*
+ * Append the Unicode codepoint {codepoint} in UTF-16LE into {builder}.
+ *
+ * Returns whether it was successful.
+ */
+bool utf16le_appendCodepoint(StringBuilder * builder, u32 codepoint);
+
+
+
+//
+// Buffers
+//
+
+/*
+ * A fixed size buffer for storing arbritary data.
+ */
+typedef struct Buffer {
+    /*
+     * Pointer to the start of the buffer.
+     */
+    char * start;
+
+    /*
+     * The capacity in chars of the buffer.
+     */
+    u64 capacity;
+} Buffer;
+
+/*
+ * Creates a new Buffer with initial capacity {initialCapacity}.
+ *
+ * Will return a Buffer with capacity 0 on error or if {initialCapacity} is 0.
+ */
+Buffer buffer_create(u64 initialCapacity);
+
+/*
+ * Destroy {buffer} and free its contents.
+ */
+void buffer_destroy(Buffer * buffer);
+
+/*
+ * Sets the capacity of {buffer} to {capacity}.
+ *
+ * Returns whether setting the capacity was successful.
+ */
+bool buffer_setCapacity(Buffer * buffer, u64 capacity);
+
+/*
+ * If {requiredCapacity} is greater than the current capacity of {buffer}, the
+ * capacity of {buffer} will be attempted to be increased to the next power of 2.
+ *
+ * Returns whether it was able to ensure that {buffer} has a capacity of at least {requiredCapacity}.
+ */
+bool buffer_ensureCapacity(Buffer * buffer, u64 requiredCapacity);
+
+/*
+ * Create a String that uses the data contained in {buffer}.
+ */
+String buffer_toString(Buffer buffer);
+
+
+
+//
+// Stacks
+//
+
+/*
+ * A stack of elements that can dynamically grow to accommodate more elements.
+ *
+ * Elements can be appended or popped from the stack.
+ */
+typedef struct Stack {
+    /*
+     * The buffer used to store the elements on the stack.
+     */
+    Buffer buffer;
+
+    /*
+     * The number of chars currently being used in the buffer.
+     */
+    u64 used;
+} Stack;
+
+/*
+ * Creates a new Stack with an initial capacity of {initialCapacity} chars.
+ *
+ * Will return a Stack with capacity 0 on error or if {initialCapacity} is 0.
+ */
+Stack stack_create(u64 initialCapacity);
+
+/*
+ * Destroy {stack} and free its contents.
+ */
+void stack_destroy(Stack * stack);
+
+/*
+ * Sets the capacity of {stack} to {capacity}.
+ *
+ * Will fail if {stack->used} is greater than {capacity}.
+ *
+ * Returns whether setting the capacity was successful.
+ */
+bool stack_setCapacity(Stack * stack, u64 capacity);
+
+/*
+ * If {requiredCapacity} is greater than the current capacity of {stack}, the
+ * capacity of {stack} will be attempted to be increased to the next power of 2.
+ *
+ * Returns whether it was able to ensure that {stack} has a capacity of at least {requiredCapacity}.
+ */
+bool stack_ensureCapacity(Stack * stack, u64 requiredCapacity);
+
+/*
+ * Attempts to reduce the capacity of {stack} so it is equal to {stack->used}.
+ *
+ * Returns whether reducing the capacity to the used space was successful.
+ */
+bool stack_trimToUsed(Stack * stack);
+
+/*
+ * Get a pointer to the end of {stack}.
+ */
+#define stack_getEnd(stack) (&((stack).buffer.start)[(stack).used])
+
+/*
+ * Get a pointer to the last element of {stack}, or NULL if there are no elements on {stack}.
+ */
+#define stack_peek(type, stack) \
+    ((type *) (stack.used >= sizeof(type) ? &((stack).buffer.start)[(stack).used - sizeof(type)] : NULL))
+
+/*
+ * Reserve {length} chars at the end of {stack}.
+ *
+ * Returns a pointer to the start of the reserved space.
+ *
+ * Will return NULL if it is unable to reserve {length} chars.
+ */
+char * stack_reserve(Stack * stack, u64 length);
+
+/*
+ * Append {length} chars from {data} to {stack}.
+ *
+ * Returns a pointer to the start of the appended data.
+ *
+ * Will return NULL if it is unable to append {data}.
+ */
+char * stack_appendData(Stack * stack, char * data, u64 length);
+
+/*
+ * Define functions to modify a Stack which contains data of type {type}.
+ *
+ * Append: {type} * stack_append{type}(Stack * stack, {type} value)
+ *   Append a value of type {type} to {stack}.
+ *
+ * Pop: {type} * stack_pop{type}(Stack * stack)
+ *   Pop a value of type {type} off the top of the stack.
+ *
+ *
+ * to append {value} of type {type} to {stack}
+ */
+#define define_stack_typedFunctions(type)   \
+    define_stack_typedCreate(type)          \
+    define_stack_typedAppend(type);         \
+    define_stack_typedAppendMany(type);     \
+    define_stack_typedPopMany(type);        \
+    define_stack_typedPop(type)
+
+/*
+ * Define a function to create a stack of type {type} with
+ * initial capacity {initialCapacity} elements of type {type}.
+ *
+ * The signature of the function is:
+ *    static Stack * stack_createOf{type}(u64 initialCapacity)
+ *
+ * e.g. For Buffer
+ *    static Stack * stack_createOfBuffer(u64 initialCapacity)
+ *
+ * Creates a new Stack with an inital capacity of {intialCapacity} elements of type {type}.
+ *
+ * Will return a Stack with capacity 0 on error or if {intialCapacity} is 0.
+ */
+#define define_stack_typedCreate(type)                         \
+    static Stack stack_createOf##type(u64 initialCapacity) {   \
+        return stack_create(initialCapacity * sizeof(type));   \
+    }
+
+/*
+ * Define a function to append the value {value} of type {type} to {stack}.
+ *
+ * The signature of the function is:
+ *    static {type} * stack_append{type}(Stack * stack, {type} value)
+ *
+ * e.g. For Buffer
+ *    static Buffer * stack_appendBuffer(Stack * stack, Buffer value)
+ *
+ * Returns a pointer to the appended element.
+ *
+ * Will return NULL if it is unable to append the value.
+ */
+#define define_stack_typedAppend(type)                                 \
+    static type * stack_append##type(Stack * stack, type value) {      \
+        if(!stack_ensureCapacity(stack, stack->used + sizeof(type)))   \
+            return NULL;                                               \
+                                                                       \
+        type * end = (type *) stack_getEnd(*stack);                    \
+        *end = value;                                                  \
+                                                                       \
+        stack->used += sizeof(type);                                   \
+                                                                       \
+        return end;                                                    \
+    }
+
+/*
+ * Define a function to append {count} values from {data} of type {type} to {stack}.
+ *
+ * The signature of the function is:
+ *    static {type} * stack_appendMany{type}(Stack * stack, {type} * data, u64 count)
+ *
+ * e.g. For Buffer
+ *    static Buffer * stack_appendManyBuffer(Stack * stack, Buffer * data, u64 count)
+ *
+ * Returns a pointer to the bottom most appended element.
+ *
+ * Will return NULL if it is unable to append the values.
+ */
+#define define_stack_typedAppendMany(type)                                              \
+    static type * stack_appendMany##type(Stack * stack, type * data, u64 count) {       \
+        return (type *) stack_appendData(stack, (char *) data, count * sizeof(type));   \
+    }
+
+/*
+ * Define a function to pop {count} values of type {type} from {stack}.
+ *
+ * The signature of the function is:
+ *    static {type} * stack_popMany{type}(Stack * stack, u64 count)
+ *
+ * e.g. For Buffer
+ *    static Buffer * stack_popManyBuffer(Stack * stack, u64 count)
+ *
+ * Returns a pointer to the bottom-most element that was popped from {stack}.
+ *
+ * Will return NULL if there are not {count} values on {stack}.
+ */
+#define define_stack_typedPopMany(type)                             \
+    static type * stack_popMany##type(Stack * stack, u64 count) {   \
+        if(stack->used < count * sizeof(type))                      \
+            return NULL;                                            \
+                                                                    \
+        stack->used -= count * sizeof(type);                        \
+                                                                    \
+        return (type *) stack_getEnd(*stack);                       \
+    }
+
+/*
+ * Define a function to pop the top value of type {type} from {stack}.
+ *
+ * The signature of the function is:
+ *    static {type} * stack_pop{type}(Stack * stack)
+ *
+ *  e.g. For Buffer
+ *     static Buffer * stack_popBuffer(Stack * stack)
+ *
+ *  Returns a pointer to the element that was popped from {stack}.
+ *
+ *  Will return NULL if there are no elements on {stack}.
+ */
+#define define_stack_typedPop(type)                    \
+    static type * stack_pop##type(Stack * stack) {     \
+        return stack_popMany##type(stack, 1);          \
+    }
 
 #endif

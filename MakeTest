@@ -1,14 +1,14 @@
 # Compiler
 CC = clang
-OPTS = -Wall -Werror
+OPTS = -Wall -Wno-unused-function -Werror
 
 # Target file
-TARGET = build/test
+TARGET = buildtest/test
 
 # Directories
 SRCDIR   = src test
-BUILDDIR = build
-OBJDIR   = build/obj
+BUILDDIR = buildtest
+OBJDIR   = buildtest/obj
 
 # Libraries
 LIBS = 
@@ -23,6 +23,7 @@ $(TARGET): buildrepo $(OBJS)
 	mkdir -p $(OBJDIR)
 	$(CC) $(OBJS) $(LIBS) $(OPTS) -o $@
 	rm -Rf $(OBJDIR)
+	rsync -r --exclude='*.h' --exclude='*.c' test/ buildtest/
 
 $(OBJDIR)/%.o: $(SRCDIR)/%.c
 	$(CC) $(OPTS) $< -o $@

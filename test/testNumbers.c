@@ -1,10 +1,6 @@
 #include "test.h"
 #include "testNumbers.h"
 
-#include "../src/numbers.h"
-
-
-
 //
 // Tests
 //

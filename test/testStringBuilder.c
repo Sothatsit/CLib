@@ -1,8 +1,6 @@
 #include "test.h"
 #include "testStringBuilder.h"
 
-#include "../src/string.h"
-
 
 
 //
@@ -15,7 +13,7 @@ bool test_strbuilder_create() {
         assert(builder.capacity == 32);
         assert(str_isEmpty(builder.string));
     }
-    strbuilder_destroy(builder);
+    strbuilder_destroy(&builder);
 
     return true;
 }
@@ -47,8 +45,8 @@ bool test_strbuilder_getStringCopy() {
         assert(str_equals(builder.string, builtString));
         assert(builder.string.data != builtString.data);
     }
-    strbuilder_destroy(builder);
-    str_destroy(builtString);
+    strbuilder_destroy(&builder);
+    str_destroy(&builtString);
 
     return true;
 }
@@ -68,7 +66,7 @@ bool test_strbuilder_setCapacity() {
         assert(!strbuilder_setCapacity(&builder, 20));
         assert(builder.capacity == 80);
     }
-    strbuilder_destroy(builder);
+    strbuilder_destroy(&builder);
 
     return true;
 }
@@ -88,7 +86,7 @@ bool test_strbuilder_ensureCapacity() {
         assert(strbuilder_ensureCapacity(&builder, 20));
         assert(builder.capacity >= 20);
     }
-    strbuilder_destroy(builder);
+    strbuilder_destroy(&builder);
 
     return true;
 }
@@ -107,7 +105,7 @@ bool test_strbuilder_trimToLength() {
         assert(strbuilder_trimToLength(&builder));
         assert(builder.capacity == 27);
     }
-    strbuilder_destroy(builder);
+    strbuilder_destroy(&builder);
 
     return true;
 }
@@ -130,7 +128,7 @@ bool test_strbuilder_appendChar() {
 
         assert(str_equals(builder.string, expected));
     }
-    strbuilder_destroy(builder);
+    strbuilder_destroy(&builder);
 
     return true;
 }
@@ -148,7 +146,7 @@ bool test_strbuilder_appendString() {
 
         assert(str_equals(builder.string, expected));
     }
-    strbuilder_destroy(builder);
+    strbuilder_destroy(&builder);
 
     return true;
 }
@@ -166,7 +164,7 @@ bool test_strbuilder_appendCString() {
 
         assert(str_equals(builder.string, expected));
     }
-    strbuilder_destroy(builder);
+    strbuilder_destroy(&builder);
 
     return true;
 }
@@ -184,7 +182,7 @@ bool test_strbuilder_appendSubstring() {
 
         assert(str_equals(builder.string, expected));
     }
-    strbuilder_destroy(builder);
+    strbuilder_destroy(&builder);
 
     return true;
 }

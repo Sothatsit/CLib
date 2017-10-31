@@ -1,8 +1,50 @@
-#include "string.h"
-
-#include <stdlib.h>
 #include <memory.h>
 #include <stdio.h>
+#include "datatypes.h"
+
+//
+// Numbers
+//
+
+u8 u8_findNextPowerOf2(u8 n) {
+    n--;
+    n |= n >> 1;
+    n |= n >> 2;
+    n |= n >> 4;
+    return (u8) (n + 1);
+}
+
+u16 u16_findNextPowerOf2(u16 n) {
+    n--;
+    n |= n >> 1;
+    n |= n >> 2;
+    n |= n >> 4;
+    n |= n >> 8;
+    return (u16) (n + 1);
+}
+
+u32 u32_findNextPowerOf2(u32 n) {
+    n--;
+    n |= n >> 1;
+    n |= n >> 2;
+    n |= n >> 4;
+    n |= n >> 8;
+    n |= n >> 16;
+    return n + 1;
+}
+
+u64 u64_findNextPowerOf2(u64 n) {
+    n--;
+    n |= n >> 1;
+    n |= n >> 2;
+    n |= n >> 4;
+    n |= n >> 8;
+    n |= n >> 16;
+    n |= n >> 32;
+    return n + 1;
+}
+
+
 
 //
 // Strings
@@ -56,11 +98,14 @@ bool str_isEmpty(String string) {
     return string.data == NULL || string.length == 0;
 }
 
-void str_destroy(String string) {
-    if(str_isEmpty(string))
+void str_destroy(String * string) {
+    if(string->length == 0)
         return;
 
-    free(string.data);
+    free(string->data);
+
+    string->length = 0;
+    string->data = NULL;
 }
 
 char * str_toCString(String string) {
@@ -266,7 +311,7 @@ bool str_setChars(String string, u64 index, String replacement) {
     if(str_isEmpty(replacement))
         return true;
 
-    memcpy(&string.data[index], replacement.data, replacement.length);
+    memmove(&string.data[index], replacement.data, replacement.length);
     return true;
 }
 
@@ -450,107 +495,42 @@ String str_splitAtCString(String * remaining, char * delimiter) {
     return str_splitAtString(remaining, str_create(delimiter));
 }
 
-String str_UCSCodepointToUTF8(u32 codepoint) {
-    if((codepoint & 0x80000000) != 0) {
-        // Invalid codepoint.
+String str_readFile(char * filename) {
+    FILE * file = fopen(filename, "rb");
+
+    if(file == NULL)
+        return str_createEmpty();
+
+    if(fseek(file, 0, SEEK_END))
+        return str_createEmpty();
+
+    long position = ftell(file);
+
+    if(position <= 0)
+        return str_createEmpty();
+
+    u64 length = (u64) position;
+    String buffer = str_createUninitialised(length);
+
+    if(str_isEmpty(buffer))
+        return str_createEmpty();
+
+    if(fseek(file, 0, SEEK_SET))
+        return str_createEmpty();
+
+    size_t read = fread(buffer.data, 1, length, file);
+
+    if(read != length) {
+        str_destroy(&buffer);
         return str_createEmpty();
     }
 
-    // If the codepoint can fit into 7 bits.
-    if(codepoint <= 0x007F) {
-        // 0xxxxxxx
-
-        String string = str_createUninitialised(1);
-
-        if(!str_isEmpty(string)) {
-            str_set(string, 0, (char) codepoint);
-        }
-
-        return string;
+    if(fclose(file)) {
+        str_destroy(&buffer);
+        return str_createEmpty();
     }
 
-    // If the codepoint can fit into 11 bits.
-    if(codepoint <= 0x07FF) {
-        // 110xxxxx 10xxxxxx
-
-        String string = str_createUninitialised(2);
-
-        if(!str_isEmpty(string)) {
-            str_set(string, 0, (char) (0xC0 | (codepoint >> 6)));
-            str_set(string, 1, (char) (0x80 | (codepoint & 0x3F)));
-        }
-
-        return string;
-    }
-
-    // If the codepoint can fit into 16 bits.
-    if(codepoint <= 0xFFFF) {
-        // 1110xxxx 10xxxxxx 10xxxxxx
-
-        String string = str_createUninitialised(3);
-
-        if(!str_isEmpty(string)) {
-            str_set(string, 0, (char) (0xE0 | (codepoint >> 12)));
-            str_set(string, 1, (char) (0x80 | ((codepoint >> 6) & 0x3F)));
-            str_set(string, 2, (char) (0x80 | (codepoint & 0x3F)));
-        }
-
-        return string;
-    }
-
-    // If the codepoint can fit into 21 bits.
-    if(codepoint <= 0x001FFFFF) {
-        // 11110xxx 10xxxxxx 10xxxxxx 10xxxxxx
-
-        String string = str_createUninitialised(4);
-
-        if(!str_isEmpty(string)) {
-            str_set(string, 0, (char) (0xF0 | (codepoint >> 18)));
-            str_set(string, 1, (char) (0x80 | ((codepoint >> 12) & 0x3F)));
-            str_set(string, 2, (char) (0x80 | ((codepoint >> 6) & 0x3F)));
-            str_set(string, 3, (char) (0x80 | (codepoint & 0x3F)));
-        }
-
-        return string;
-    }
-
-    // If the codepoint can fit into 26 bits.
-    if(codepoint <= 0x03FFFFFF) {
-        // 111110xx 10xxxxxx 10xxxxxx 10xxxxxx 10xxxxxx
-
-        String string = str_createUninitialised(5);
-
-        if(!str_isEmpty(string)) {
-            str_set(string, 0, (char) (0xF8 | (codepoint >> 24)));
-            str_set(string, 1, (char) (0x80 | ((codepoint >> 18) & 0x3F)));
-            str_set(string, 2, (char) (0x80 | ((codepoint >> 12) & 0x3F)));
-            str_set(string, 3, (char) (0x80 | ((codepoint >> 6) & 0x3F)));
-            str_set(string, 4, (char) (0x80 | (codepoint & 0x3F)));
-        }
-
-        return string;
-    }
-
-    // If the codepoint can fit into 31 bits.
-    if(codepoint <= 0x7FFFFFFF) {
-        // 1111110x 10xxxxxx 10xxxxxx 10xxxxxx 10xxxxxx 10xxxxxx
-
-        String string = str_createUninitialised(6);
-
-        if(!str_isEmpty(string)) {
-            str_set(string, 0, (char) (0xFC | (codepoint >> 30)));
-            str_set(string, 1, (char) (0x80 | ((codepoint >> 24) & 0x3F)));
-            str_set(string, 2, (char) (0x80 | ((codepoint >> 18) & 0x3F)));
-            str_set(string, 3, (char) (0x80 | ((codepoint >> 12) & 0x3F)));
-            str_set(string, 4, (char) (0x80 | ((codepoint >> 6) & 0x3F)));
-            str_set(string, 5, (char) (0x80 | (codepoint & 0x3F)));
-        }
-
-        return string;
-    }
-
-    // Invalid codepoint.
-    return str_createEmpty();
+    return buffer;
 }
 
 
@@ -570,11 +550,13 @@ StringBuilder strbuilder_create(u64 initialSize) {
     return stringBuilder;
 }
 
-void strbuilder_destroy(StringBuilder stringBuilder) {
-    if(stringBuilder.capacity == 0)
+void strbuilder_destroy(StringBuilder * stringBuilder) {
+    if(stringBuilder->capacity == 0)
         return;
 
-    str_destroy(stringBuilder.string);
+    str_destroy(&stringBuilder->string);
+
+    stringBuilder->capacity = 0;
 }
 
 String strbuilder_getStringCopy(StringBuilder stringBuilder) {
@@ -589,7 +571,7 @@ bool strbuilder_setCapacity(StringBuilder * stringBuilder, u64 capacity) {
         return true;
 
     if(capacity == 0) {
-        str_destroy(stringBuilder->string);
+        str_destroy(&stringBuilder->string);
         stringBuilder->string = str_createEmpty();
         stringBuilder->capacity = 0;
         return true;
@@ -664,4 +646,390 @@ bool strbuilder_appendCString(StringBuilder * stringBuilder, char * string) {
 
 bool strbuilder_appendSubstring(StringBuilder * stringBuilder, String string, u64 start, u64 end) {
     return strbuilder_appendString(stringBuilder, str_substring(string, start, end));
+}
+
+#define __utf8ToCodepoint_nextChar(remaining, next)   \
+    do {                                              \
+        if(remaining->length == 0)                    \
+            return 0;                                 \
+                                                      \
+        next = (u8) remaining->data[0];               \
+                                                      \
+        remaining->length -= 1;                       \
+        remaining->data += 1;                         \
+    } while(0)
+
+#define __utf8ToCodepoint_appendChar(remaining, next, codepoint)   \
+    do {                                                           \
+        __utf8ToCodepoint_nextChar(remaining, next);               \
+        codepoint <<= 6;                                           \
+        codepoint |= (u32) (next & 0b00111111);                    \
+    } while(0)
+
+u32 utf8_toCodepoint(String * remaining) {
+    u8 next;
+
+    __utf8ToCodepoint_nextChar(remaining, next);
+
+    // 0xxxxxxx
+    if(next < 0b10000000)
+        return (u32) next;
+
+    // 10xxxxxx
+    if(next < 0b11000000) {
+        // This char is the middle of a codepoint.
+        return 0;
+    }
+
+    // 110xxxxx 10xxxxxx
+    if(next < 0b11100000) {
+        u32 codepoint = (u32) (next & 0b00011111);
+
+        __utf8ToCodepoint_appendChar(remaining, next, codepoint);
+
+        return codepoint;
+    }
+
+    // 1110xxxx 10xxxxxx 10xxxxxx
+    if(next < 0b11110000) {
+        u32 codepoint = (u32) (next & 0b00001111);
+
+        __utf8ToCodepoint_appendChar(remaining, next, codepoint);
+        __utf8ToCodepoint_appendChar(remaining, next, codepoint);
+
+        return codepoint;
+    }
+
+    // 11110xxx 10xxxxxx 10xxxxxx 10xxxxxx
+    if(next < 0b11111000) {
+        u32 codepoint = (u32) (next & 0b00000111);
+
+        __utf8ToCodepoint_appendChar(remaining, next, codepoint);
+        __utf8ToCodepoint_appendChar(remaining, next, codepoint);
+        __utf8ToCodepoint_appendChar(remaining, next, codepoint);
+
+        return codepoint;
+    }
+
+    // 111110xx 10xxxxxx 10xxxxxx 10xxxxxx 10xxxxxx
+    if(next < 0b11111100) {
+        u32 codepoint = (u32) (next & 0b00000011);
+
+        __utf8ToCodepoint_appendChar(remaining, next, codepoint);
+        __utf8ToCodepoint_appendChar(remaining, next, codepoint);
+        __utf8ToCodepoint_appendChar(remaining, next, codepoint);
+        __utf8ToCodepoint_appendChar(remaining, next, codepoint);
+
+        return codepoint;
+    }
+
+    // 1111110x 10xxxxxx 10xxxxxx 10xxxxxx 10xxxxxx 10xxxxxx
+    if(next < 0b11111110) {
+        u32 codepoint = (u32) (next & 0b00000001);
+
+        __utf8ToCodepoint_appendChar(remaining, next, codepoint);
+        __utf8ToCodepoint_appendChar(remaining, next, codepoint);
+        __utf8ToCodepoint_appendChar(remaining, next, codepoint);
+        __utf8ToCodepoint_appendChar(remaining, next, codepoint);
+        __utf8ToCodepoint_appendChar(remaining, next, codepoint);
+
+        return codepoint;
+    }
+
+    // Invalid character
+    return 0;
+}
+
+#undef __utf8ToCodepoint_nextChar
+#undef __utf8ToCodepoint_appendChar
+
+String utf8_fromCodepoint(u32 codepoint) {
+    StringBuilder builder = strbuilder_create(4);
+
+    if(!utf8_appendCodepoint(&builder, codepoint)) {
+        strbuilder_destroy(&builder);
+        return str_createEmpty();
+    }
+
+    return builder.string;
+}
+
+bool utf8_appendCodepoint(StringBuilder *builder, u32 codepoint) {
+    bool res = true;
+
+    if((codepoint & 0x80000000) != 0) {
+        // Invalid codepoint.
+        return false;
+    }
+
+    // If the codepoint can fit into 7 bits.
+    if(codepoint <= 0x007F) {
+        // 0xxxxxxx
+
+        res = res && strbuilder_appendChar(builder, (char) codepoint);
+
+        return res;
+    }
+
+    // If the codepoint can fit into 11 bits.
+    if(codepoint <= 0x07FF) {
+        // 110xxxxx 10xxxxxx
+
+        res = res && strbuilder_appendChar(builder, (char) (0xC0 | (codepoint >> 6)));
+        res = res && strbuilder_appendChar(builder, (char) (0x80 | (codepoint & 0x3F)));
+
+        return res;
+    }
+
+    // If the codepoint can fit into 16 bits.
+    if(codepoint <= 0xFFFF) {
+        // 1110xxxx 10xxxxxx 10xxxxxx
+
+        res = res && strbuilder_appendChar(builder, (char) (0xE0 | (codepoint >> 12)));
+        res = res && strbuilder_appendChar(builder, (char) (0x80 | ((codepoint >> 6) & 0x3F)));
+        res = res && strbuilder_appendChar(builder, (char) (0x80 | (codepoint & 0x3F)));
+
+        return res;
+    }
+
+    // If the codepoint can fit into 21 bits.
+    if(codepoint <= 0x001FFFFF) {
+        // 11110xxx 10xxxxxx 10xxxxxx 10xxxxxx
+
+        res = res && strbuilder_appendChar(builder, (char) (0xF0 | (codepoint >> 18)));
+        res = res && strbuilder_appendChar(builder, (char) (0x80 | ((codepoint >> 12) & 0x3F)));
+        res = res && strbuilder_appendChar(builder, (char) (0x80 | ((codepoint >> 6) & 0x3F)));
+        res = res && strbuilder_appendChar(builder, (char) (0x80 | (codepoint & 0x3F)));
+
+        return res;
+    }
+
+    // If the codepoint can fit into 26 bits.
+    if(codepoint <= 0x03FFFFFF) {
+        // 111110xx 10xxxxxx 10xxxxxx 10xxxxxx 10xxxxxx
+
+        res = res && strbuilder_appendChar(builder, (char) (0xF8 | (codepoint >> 24)));
+        res = res && strbuilder_appendChar(builder, (char) (0x80 | ((codepoint >> 18) & 0x3F)));
+        res = res && strbuilder_appendChar(builder, (char) (0x80 | ((codepoint >> 12) & 0x3F)));
+        res = res && strbuilder_appendChar(builder, (char) (0x80 | ((codepoint >> 6) & 0x3F)));
+        res = res && strbuilder_appendChar(builder, (char) (0x80 | (codepoint & 0x3F)));
+
+        return res;
+    }
+
+    // If the codepoint can fit into 31 bits.
+    if(codepoint <= 0x7FFFFFFF) {
+        // 1111110x 10xxxxxx 10xxxxxx 10xxxxxx 10xxxxxx 10xxxxxx
+
+        res = res && strbuilder_appendChar(builder, (char) (0xFC | (codepoint >> 30)));
+        res = res && strbuilder_appendChar(builder, (char) (0x80 | ((codepoint >> 24) & 0x3F)));
+        res = res && strbuilder_appendChar(builder, (char) (0x80 | ((codepoint >> 18) & 0x3F)));
+        res = res && strbuilder_appendChar(builder, (char) (0x80 | ((codepoint >> 12) & 0x3F)));
+        res = res && strbuilder_appendChar(builder, (char) (0x80 | ((codepoint >> 6) & 0x3F)));
+        res = res && strbuilder_appendChar(builder, (char) (0x80 | (codepoint & 0x3F)));
+
+        return res;
+    }
+
+    // Invalid codepoint.
+    return false;
+}
+
+#define __utf16leToCodepoint_nextChar(remaining, next)                                   \
+    do {                                                                                 \
+        if(remaining->length < 2)                                                        \
+            return 0;                                                                    \
+                                                                                         \
+        next = (remaining->data[0] & 0xff) | ((u16) (remaining->data[1] & 0xff) << 8);   \
+                                                                                         \
+        remaining->length -= 2;                                                          \
+        remaining->data += 2;                                                            \
+    } while(0)
+
+u32 utf16le_toCodepoint(String * remaining) {
+    u16 lo;
+    u16 hi;
+
+    __utf16leToCodepoint_nextChar(remaining, lo);
+
+    // Single character
+    if(lo < 0xD800 || lo > 0xDFFF)
+        return (u32) lo;
+
+    // lo is the second half of a surrogate pair.
+    if(lo > 0xDBFF)
+        return 0;
+
+    __utf16leToCodepoint_nextChar(remaining, hi);
+
+    // hi is not the second half of a surrogate pair.
+    if(hi < 0xDC00 || hi > 0xDFFF)
+        return 0;
+
+    const u32 low10bits = (1 << 10) - 1;
+
+    return (((u32) lo & low10bits) << 10) + (hi & low10bits) + 0x10000;
+}
+
+#undef __utf16leToCodepoint_nextChar
+
+String utf16le_fromCodepoint(u32 codepoint) {
+    StringBuilder builder = strbuilder_create(4);
+
+    if(!utf16le_appendCodepoint(&builder, codepoint)) {
+        strbuilder_destroy(&builder);
+        return str_createEmpty();
+    }
+
+    return builder.string;
+}
+
+#define __utf16leAppendCodepoint_append(builder, value)                       \
+    do {                                                                      \
+        const u8 low8bits = (1 << 8) - 1;                                     \
+        strbuilder_appendChar(builder, (char) ((value) & low8bits));          \
+        strbuilder_appendChar(builder, (char) (((value) >> 8) & low8bits));   \
+    } while(0);
+
+bool utf16le_appendCodepoint(StringBuilder * builder, u32 codepoint) {
+    if(codepoint < 0x10000) {
+        __utf16leAppendCodepoint_append(builder, (u16) codepoint);
+        return true;
+    }
+
+    const u16 low10bits = (1 << 10) - 1;
+
+    codepoint -= 0x10000;
+
+    u16 lo = (u16) 0xD800 | (u16) ((codepoint >> 10) & low10bits);
+    u16 hi = (u16) 0xDC00 | (u16) (codepoint & low10bits);
+
+    __utf16leAppendCodepoint_append(builder, lo);
+    __utf16leAppendCodepoint_append(builder, hi);
+
+    return false;
+}
+
+
+
+//
+// Buffers
+//
+
+Buffer buffer_create(u64 initialSize) {
+    Buffer buffer;
+
+    buffer.start = NULL;
+    buffer.capacity = 0;
+
+    buffer_setCapacity(&buffer, initialSize);
+
+    return buffer;
+}
+
+void buffer_destroy(Buffer * buffer) {
+    if(buffer->capacity == 0)
+        return;
+
+    free(buffer->start);
+
+    buffer->capacity = 0;
+    buffer->start = NULL;
+}
+
+bool buffer_setCapacity(Buffer * buffer, u64 capacity) {
+    if(buffer->capacity == capacity)
+        return true;
+
+    if(capacity == 0) {
+        buffer_destroy(buffer);
+        buffer->start = NULL;
+        buffer->capacity = 0;
+        return true;
+    }
+
+    if(buffer->capacity == 0) {
+        buffer->start = malloc(capacity);
+    } else {
+        buffer->start = realloc(buffer->start, capacity);
+    }
+
+    if(buffer->start == NULL) {
+        buffer->capacity = 0;
+        return false;
+    }
+
+    buffer->capacity = capacity;
+    return true;
+}
+
+bool buffer_ensureCapacity(Buffer * buffer, u64 requiredCapacity) {
+    if(requiredCapacity <= buffer->capacity)
+        return true;
+
+    u64 newCapacity = u64_findNextPowerOf2(requiredCapacity);
+
+    return buffer_setCapacity(buffer, newCapacity);
+}
+
+String buffer_toString(Buffer buffer) {
+    String string;
+
+    string.length = buffer.capacity;
+    string.data = buffer.start;
+
+    return string;
+}
+
+
+
+//
+// Stacks
+//
+
+Stack stack_create(u64 initialCapacity) {
+    Stack stack;
+
+    stack.buffer = buffer_create(initialCapacity);
+    stack.used = 0;
+
+    return stack;
+}
+
+void stack_destroy(Stack * stack) {
+    buffer_destroy(&stack->buffer);
+}
+
+bool stack_setCapacity(Stack * stack, u64 capacity) {
+    return buffer_setCapacity(&stack->buffer, capacity);
+}
+
+bool stack_ensureCapacity(Stack * stack, u64 requiredCapacity) {
+    return buffer_ensureCapacity(&stack->buffer, requiredCapacity);
+}
+
+bool stack_trimToUsed(Stack * stack) {
+    return stack_setCapacity(stack, stack->used);
+}
+
+char * stack_reserve(Stack * stack, u64 length) {
+    if(!stack_ensureCapacity(stack, stack->used + length))
+        return NULL;
+
+    char * end = stack_getEnd(*stack);
+
+    stack->used += length;
+
+    return end;
+}
+
+char * stack_appendData(Stack * stack, char * data, u64 length) {
+    char * start = stack_reserve(stack, length);
+
+    if(start == NULL)
+        return NULL;
+
+    memcpy(start, data, length);
+
+    return start;
 }

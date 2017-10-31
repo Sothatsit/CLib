@@ -2,12 +2,16 @@
 #include "testNumbers.h"
 #include "testString.h"
 #include "testStringBuilder.h"
+#include "testUTF.h"
+#include "testJson.h"
 #include "testExamples.h"
 
 void test_all(int * failures, int * successes) {
     test_numbers(failures, successes);
     test_String(failures, successes);
     test_StringBuilder(failures, successes);
+    test_UTF(failures, successes);
+    test_json(failures, successes);
     test_examples(failures, successes);
 }
 
@@ -15,7 +19,7 @@ int main(int argc, char *argv[]) {
     int failures = 0;
     int successes = 0;
 
-    printf(BLUE BOLD "Running tests...\n\n" RESET);
+    printf(BLUE BOLD "Running tests..." RESET "\n\n");
 
     test_all(&failures, &successes);
 

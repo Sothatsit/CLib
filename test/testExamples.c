@@ -1,9 +1,4 @@
 #include "test.h"
-#include "testExamples.h"
-
-#include "../src/string.h"
-
-
 
 //
 // Tests
@@ -32,7 +27,7 @@ bool test_String_example() {
         }
 
         // Destroy the String
-        str_destroy(contrived);
+        str_destroy(&contrived);
     }
 
     return true;
@@ -69,7 +64,7 @@ bool test_StringBuilder_example() {
         // printf("Fruits: [%s]\n", str_toCString(builder.string));
 
         // Destroy the StringBuilder
-        strbuilder_destroy(builder);
+        strbuilder_destroy(&builder);
     }
 
     return true;

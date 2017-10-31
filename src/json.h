@@ -151,12 +151,6 @@ JsonParseResult json_parse(String string);
 void json_parse_printError(JsonParseResult result);
 
 /*
- * Print an error report with the error in {result}, showing
- * {charsAround} characters around where the error occured.
- */
-void json_parse_printDetailedError(JsonParseResult result, u64 charsAround);
-
-/*
  * Quote {unquoted} so that it can be placed into a json string.
  */
 String json_quoteString(String unquoted);

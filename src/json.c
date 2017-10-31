@@ -82,6 +82,11 @@ void json_parse_destroy(JsonParseContext * context);
 bool json_parse_error(JsonParseContext * context, char * message);
 
 /*
+ * Update the references in the JsonNode Stack {stack} after a re-allocation from {previousStart}.
+ */
+void json_parse_updateNodeReferences(Stack stack, char * previousStart);
+
+/*
  * Append the JsonNode {node} to the current object being constructed in {context}.
  */
 bool json_parse_appendNode(JsonParseContext * context, JsonNode node);
@@ -239,10 +244,8 @@ bool json_parse_error(JsonParseContext * context, char * message) {
 }
 
 void json_parse_printError(JsonParseResult result) {
-    json_parse_printDetailedError(result, 10);
-}
+    const u32 charsAround = 10;
 
-void json_parse_printDetailedError(JsonParseResult result, u64 charsAround) {
     if(result.isError) {
         fprintf(stderr, "Error parsing Json at index %lld:\n", result.errorIndex);
         fprintf(stderr, "   %s\n", str_toCString(result.error));
@@ -297,37 +300,22 @@ void json_parse_updateNodeReferences(Stack stack, char * previousStart) {
     for(u64 index = 0; index < nodeCount; ++index) {
         JsonNode * node = &nodes[index];
 
-        if(node->flags.parentType == JSON_OBJECT) {
-            node->key.name.data += pointerChange;
-        }
-
-        switch(node->flags.type) {
-            case JSON_OBJECT:
-            case JSON_ARRAY:
-                *((char **) &node->value.object.children) += pointerChange;
-                break;
-
-            case JSON_NUMBER:
-            case JSON_STRING:
-                node->value.string.data += pointerChange;
-                break;
-
-            default:
-                break;
+        if(node->flags.type == JSON_OBJECT || node->flags.type == JSON_ARRAY) {
+            *((char **) &node->value.object.children) += pointerChange;
         }
     }
 }
 
 bool json_parse_appendNode(JsonParseContext * context, JsonNode node) {
-    char * previousStart = context->nodeStack.buffer.start;
+    char * nodeStackPreviousStart = context->nodeStack.buffer.start;
 
     JsonNode * appended = stack_appendJsonNode(&context->nodeStack, node);
 
     if(appended == NULL)
         return json_parse_error(context, "Failure appending value node");
 
-    if(previousStart != context->nodeStack.buffer.start) {
-        json_parse_updateNodeReferences(context->nodeStack, previousStart);
+    if(nodeStackPreviousStart != context->nodeStack.buffer.start) {
+        json_parse_updateNodeReferences(context->nodeStack, nodeStackPreviousStart);
     }
 
     return true;
@@ -339,10 +327,16 @@ bool json_parse_completeObject(JsonParseContext * context, JsonNodeFlags flags, 
     if(stackNodes == NULL)
         return json_parse_error(context, "JsonParseObject's size greater than size of node stack");;
 
+    char * dataStackPreviousStart = context->dataStack.buffer.start;
+
     JsonNode * nodes = stack_appendManyJsonNode(&context->dataStack, stackNodes, size);
 
     if(nodes == NULL)
         return json_parse_error(context, "Unable to append JsonNodes to data stack");
+
+    if(dataStackPreviousStart != context->dataStack.buffer.start) {
+        json_parse_updateNodeReferences(context->dataStack, dataStackPreviousStart);
+    }
 
     JsonNode objectNode; {
         objectNode.flags = flags;

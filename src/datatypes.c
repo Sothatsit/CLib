@@ -6,7 +6,7 @@
 // Numbers
 //
 
-u8 u8_findNextPowerOf2(u8 n) {
+u8 u8_nextPowerOf2(u8 n) {
     n--;
     n |= n >> 1;
     n |= n >> 2;
@@ -14,7 +14,7 @@ u8 u8_findNextPowerOf2(u8 n) {
     return (u8) (n + 1);
 }
 
-u16 u16_findNextPowerOf2(u16 n) {
+u16 u16_nextPowerOf2(u16 n) {
     n--;
     n |= n >> 1;
     n |= n >> 2;
@@ -23,7 +23,7 @@ u16 u16_findNextPowerOf2(u16 n) {
     return (u16) (n + 1);
 }
 
-u32 u32_findNextPowerOf2(u32 n) {
+u32 u32_nextPowerOf2(u32 n) {
     n--;
     n |= n >> 1;
     n |= n >> 2;
@@ -33,7 +33,7 @@ u32 u32_findNextPowerOf2(u32 n) {
     return n + 1;
 }
 
-u64 u64_findNextPowerOf2(u64 n) {
+u64 u64_nextPowerOf2(u64 n) {
     n--;
     n |= n >> 1;
     n |= n >> 2;
@@ -95,11 +95,11 @@ String str_createEmpty() {
 }
 
 bool str_isEmpty(String string) {
-    return string.data == NULL || string.length == 0;
+    return string.length == 0;
 }
 
 void str_destroy(String * string) {
-    if(string->length == 0)
+    if(str_isEmpty(*string))
         return;
 
     free(string->data);
@@ -300,7 +300,10 @@ bool str_set(String string, u64 index, char character) {
     if(index >= string.length)
         return false;
 
-    string.data[index] = character;
+    // Temp variable to remove broken CLion unused value warning
+    char * data = string.data;
+
+    data[index] = character;
     return true;
 }
 
@@ -605,7 +608,7 @@ bool strbuilder_ensureCapacity(StringBuilder * stringBuilder, u64 requiredCapaci
     if(requiredCapacity <= stringBuilder->capacity)
         return true;
 
-    u64 newCapacity = u64_findNextPowerOf2(requiredCapacity);
+    u64 newCapacity = u64_nextPowerOf2(requiredCapacity);
 
     return strbuilder_setCapacity(stringBuilder, newCapacity);
 }
@@ -907,7 +910,7 @@ bool utf16le_appendCodepoint(StringBuilder * builder, u32 codepoint) {
     __utf16leAppendCodepoint_append(builder, lo);
     __utf16leAppendCodepoint_append(builder, hi);
 
-    return false;
+    return true;
 }
 
 
@@ -916,15 +919,59 @@ bool utf16le_appendCodepoint(StringBuilder * builder, u32 codepoint) {
 // Buffers
 //
 
-Buffer buffer_create(u64 initialSize) {
-    Buffer buffer;
+Buffer buffer_create(u64 capacity) {
+    Buffer buffer = buffer_createEmpty();
 
-    buffer.start = NULL;
-    buffer.capacity = 0;
-
-    buffer_setCapacity(&buffer, initialSize);
+    buffer_setCapacity(&buffer, capacity);
 
     return buffer;
+}
+
+Buffer buffer_createUsing(char * start, u64 capacity) {
+    if(start == NULL || capacity == 0)
+        return buffer_createEmpty();
+
+    return (Buffer) {
+            .start = start,
+            .capacity = capacity
+    };
+}
+
+Buffer buffer_createEmpty() {
+    return (Buffer) {
+            .start = NULL,
+            .capacity = 0
+    };
+}
+
+Buffer buffer_copy(Buffer buffer) {
+    if(buffer_isEmpty(buffer))
+        return buffer_createEmpty();
+
+    Buffer copy = buffer_create(buffer.capacity);
+
+    if(buffer_isEmpty(copy))
+        return buffer_createEmpty();
+
+    if(!buffer_copyInto(buffer, copy))
+        return buffer_createEmpty();
+
+    return copy;
+}
+
+bool buffer_copyInto(Buffer from, Buffer to) {
+    if(from.capacity > to.capacity)
+        return false;
+
+    if(buffer_isEmpty(from))
+        return true;
+
+    memmove(to.start, from.start, from.capacity);
+    return true;
+}
+
+bool buffer_isEmpty(Buffer buffer) {
+    return buffer.capacity == 0;
 }
 
 void buffer_destroy(Buffer * buffer) {
@@ -967,18 +1014,19 @@ bool buffer_ensureCapacity(Buffer * buffer, u64 requiredCapacity) {
     if(requiredCapacity <= buffer->capacity)
         return true;
 
-    u64 newCapacity = u64_findNextPowerOf2(requiredCapacity);
+    u64 newCapacity = u64_nextPowerOf2(requiredCapacity);
 
     return buffer_setCapacity(buffer, newCapacity);
 }
 
-String buffer_toString(Buffer buffer) {
-    String string;
+bool buffer_equals(Buffer buffer1, Buffer buffer2) {
+    if(buffer1.capacity != buffer2.capacity)
+        return false;
 
-    string.length = buffer.capacity;
-    string.data = buffer.start;
+    if(buffer1.capacity == 0)
+        return true;
 
-    return string;
+    return memcmp(buffer1.start, buffer2.start, buffer1.capacity) == 0;
 }
 
 
@@ -996,8 +1044,13 @@ Stack stack_create(u64 initialCapacity) {
     return stack;
 }
 
+bool stack_isValid(Stack stack) {
+    return !buffer_isEmpty(stack.buffer);
+}
+
 void stack_destroy(Stack * stack) {
     buffer_destroy(&stack->buffer);
+    stack->used = 0;
 }
 
 bool stack_setCapacity(Stack * stack, u64 capacity) {

@@ -3,6 +3,8 @@
 #include "testString.h"
 #include "testStringBuilder.h"
 #include "testUTF.h"
+#include "testBuffer.h"
+#include "testStack.h"
 #include "testJson.h"
 #include "testExamples.h"
 
@@ -11,6 +13,8 @@ void test_all(int * failures, int * successes) {
     test_String(failures, successes);
     test_StringBuilder(failures, successes);
     test_UTF(failures, successes);
+    test_Buffer(failures, successes);
+    test_Stack(failures, successes);
     test_json(failures, successes);
     test_examples(failures, successes);
 }
@@ -45,14 +49,16 @@ void runTest(char * name, TestFunction testFunction, int * failures, int * succe
 
     bool success = testFunction();
 
+    clock_t end = clock();
+
     if(success) {
-        ++*successes;
+        ++(*successes);
     } else {
-        double duration = (double) (clock() - begin) / (CLOCKS_PER_SEC / 1e3);
+        double duration = (double) (end - begin) / (CLOCKS_PER_SEC / 1e3);
 
         printf(FAILURE " : " MAGENTA "%s" RESET " (" YELLOW "%0.3f ms" RESET ")\n\n",
                name, duration);
 
-        ++*failures;
+        ++(*failures);
     }
 }

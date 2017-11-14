@@ -31,6 +31,7 @@
 #define assert(condition)                                                                           \
     do {if(!(condition)) {                                                                          \
          printf(ERROR " : " YELLOW "line %d" RESET " in " YELLOW __FILE__ RESET "\n", __LINE__);    \
+         printf("%s\n", #condition);                                                                \
          return false;                                                                              \
     }} while(0)
 
@@ -39,7 +40,7 @@
  */
 #define assertOrError(condition, error, ...)                                                              \
     do {if(!(condition)) {                                                                                \
-         printf(ERROR " : " YELLOW "line %d" RESET " in " YELLOW __FILE__ RESET " : \n  " #error "\n",    \
+         printf(ERROR " : " YELLOW "line %d" RESET " in " YELLOW __FILE__ RESET " : \n  " error "\n",    \
                   __LINE__, ## __VA_ARGS__);                                                              \
          return false;                                                                                    \
     }} while(0)
@@ -48,15 +49,6 @@
  * Assert {pointer} is not NULL.
  */
 #define assertNonNull(pointer) assertOrError(pointer != NULL, #pointer " is unexpectedly null")
-
-/*
- * Assert {string} is not empty and contains data.
- */
-#define assertStrValid(string)                                                    \
-    do {                                                                          \
-        assertOrError(!str_isEmpty(string), #string " is unexpectedly empty");    \
-        assertNonNull(string.data);                                               \
-    } while(0)
 
 
 

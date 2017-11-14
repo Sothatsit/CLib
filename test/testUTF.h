@@ -1,6 +1,8 @@
 #ifndef __CLIB_testUTF8_h
 #define __CLIB_testUTF8_h
 
+#include "testString.h"
+
 /*
  * Test UTF8 conversions.
  */

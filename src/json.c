@@ -25,7 +25,7 @@ const char * JsonTypeNames[] = {
 /*
  * Stores data used while constructing a tree of Json data.
  */
-typedef struct JsonParseContext {
+struct JsonParseContext {
     /*
      * The original String being parsed.
      */
@@ -37,12 +37,12 @@ typedef struct JsonParseContext {
     String remaining;
 
     /*
-     * Stores JsonNodes of objects currently being created
+     * Stores JsonNodes of objects currently being created.
      */
     Stack nodeStack;
 
     /*
-     * Stores finalised JsonNodes and Strings
+     * Stores finalised JsonNodes.
      */
     Stack dataStack;
 
@@ -50,7 +50,7 @@ typedef struct JsonParseContext {
      * The result of parsing.
      */
     JsonParseResult result;
-} JsonParseContext;
+};
 
 /*
  * Define functions used to manipulate the Stacks used to construct a JsonObject.
@@ -58,90 +58,92 @@ typedef struct JsonParseContext {
 define_stack_typedFunctions(JsonNode);
 
 /*
- * Construct a JsonParseContext to parse {string}.
+ * Create an empty JsonParseResult.
  */
-JsonParseContext json_parse_create(String string);
+static JsonParseResult json_parseResult_createEmpty();
 
 /*
- * Complete the JsonParseContext {context} by destroying its temporary stacks.
+ * Initialise the JsonParseContext {context} so that it can be used to parse {input}.
  *
- * Returns a reference to the root JsonNode.
+ * Returns whether it was successful.
  */
-bool json_parse_complete(JsonParseContext * context);
+static bool json_parseContext_init(JsonParseContext * context, String input);
 
 /*
- * Destroy the JsonParseContext completely if parsing fails and no valid result can be returned.
+ * Complete the JsonParseContext {context} and clear it so it can be used again.
+ *
+ * Returns the result of the parsing from {context}.
  */
-void json_parse_destroy(JsonParseContext * context);
+static JsonParseResult json_parseContext_complete(JsonParseContext * context);
+
+/*
+ * Destroy the temporary stacks used by {context} maintaining the stacks used for the result.
+ */
+static void json_parseContext_partialDestroy(JsonParseContext * context);
 
 /*
  * Report an error that occured while parsing from {context}.
  *
  * Will always return false.
  */
-bool json_parse_error(JsonParseContext * context, char * message);
-
-/*
- * Update the references in the JsonNode Stack {stack} after a re-allocation from {previousStart}.
- */
-void json_parse_updateNodeReferences(Stack stack, char * previousStart);
+static bool json_parseContext_error(JsonParseContext * context, char * message);
 
 /*
  * Append the JsonNode {node} to the current object being constructed in {context}.
  */
-bool json_parse_appendNode(JsonParseContext * context, JsonNode node);
+static bool json_parseContext_appendNode(JsonParseContext * context, JsonNode node);
 
 /*
  * Complete creation of a JsonParseObject and append its JsonNode value to its parent object.
  */
-bool json_parse_completeObject(JsonParseContext * context, JsonNodeFlags flags, JsonKey key, u32 size);
+static bool json_parseContext_completeObject(JsonParseContext * context, JsonNode node);
 
 /*
  * Remove all the leading whitespace from the remaining string in {context}.
  *
  * Returns whether there are remaining characters in {context}.
  */
-bool json_parse_trim(JsonParseContext * context);
+static bool json_parseContext_trim(JsonParseContext * context);
 
 /*
  * Get the next character in {context}.
  */
-char json_parse_next(JsonParseContext * context);
+static char json_parseContext_next(JsonParseContext * context);
 
 /*
  * Chew {characters} characters from the remaining string in {context}.
  */
-void json_parse_chew(JsonParseContext * context, u64 characters);
+static void json_parseContext_chew(JsonParseContext * context, u64 characters);
 
 /*
  * Parse a json value.
  */
-bool json_parse_parseValue(JsonParseContext * context, JsonNodeFlags flags, JsonKey key);
+static bool json_parseContext_parseValue(JsonParseContext * context, JsonNode node);
 
 /*
  * Parse a constant value.
  */
-bool json_parse_parseExpected(JsonParseContext * context, JsonNodeFlags flags, JsonKey key, String expected);
+static bool json_parseContext_parseExpected(JsonParseContext * context, JsonNode node, String expected);
 
 /*
  * Parse a String into {value}.
  */
-bool json_parse_parseString(JsonParseContext * context, String * value);
+static bool json_parseContext_parseString(JsonParseContext * context, String * value);
 
 /*
  * Parse a number.
  */
-bool json_parse_parseNumber(JsonParseContext * context, JsonNodeFlags flags, JsonKey key);
+static bool json_parseContext_parseNumber(JsonParseContext * context, JsonNode node);
 
 /*
  * Parse an object.
  */
-bool json_parse_parseObject(JsonParseContext * context, JsonNodeFlags flags, JsonKey key);
+static bool json_parseContext_parseObject(JsonParseContext * context, JsonNode node);
 
 /*
  * Parse an array.
  */
-bool json_parse_parseArray(JsonParseContext * context, JsonNodeFlags flags, JsonKey key);
+static bool json_parseContext_parseArray(JsonParseContext * context, JsonNode node);
 
 
 
@@ -149,69 +151,111 @@ bool json_parse_parseArray(JsonParseContext * context, JsonNodeFlags flags, Json
 // Parsing Implementation
 //
 
-JsonParseContext json_parse_create(String string) {
+static JsonParseResult json_parseResult_createEmpty() {
+    return (JsonParseResult) {
+            .input = str_createEmpty(),
+            .root.nodes = NULL,
+            .root.size = 0,
+            .isError = false,
+            .error = str_createEmpty(),
+            .errorIndex = 0
+    };
+}
+
+JsonParseContext json_parseContext_create() {
     JsonParseContext context;
 
-    context.input = string;
-    context.remaining = string;
+    context.input = str_createEmpty();
+    context.remaining = str_createEmpty();
     context.nodeStack = stack_createOfJsonNode(8);
     context.dataStack = stack_createOfJsonNode(8);
-    context.result.input = string;
-    context.result.root = (JsonNode *) context.dataStack.buffer.start;
-    context.result.isError = false;
-    context.result.error = str_createEmpty();
-    context.result.errorIndex = 0;
+    context.result = json_parseResult_createEmpty();
 
-    // TODO: Create functions to check whether a Stack or Buffer is invalid
-    if(context.nodeStack.buffer.start == NULL) {
-        json_parse_error(&context, "Unable to create nodeStack");
+    if(!stack_isValid(context.nodeStack)) {
+        json_parseContext_error(&context, "Unable to create nodeStack");
         return context;
     }
 
-    if(context.dataStack.buffer.start == NULL) {
-        json_parse_error(&context, "Unable to create dataStack");
+    if(!stack_isValid(context.dataStack)) {
+        json_parseContext_error(&context, "Unable to create dataStack");
         return context;
     }
 
     if(stack_reserve(&context.dataStack, sizeof(JsonNode)) == NULL) {
-        json_parse_error(&context, "Unable to reserve space for root JsonNode on dataStack");
+        json_parseContext_error(&context, "Unable to reserve space for root JsonNode on dataStack");
         return context;
     }
 
     return context;
 }
 
-bool json_parse_complete(JsonParseContext * context) {
-    if(json_parse_trim(context))
-        return json_parse_error(context, "Remaining characters after completion of parsing");
+static bool json_parseContext_init(JsonParseContext * context, String input) {
+    if(context->result.isError)
+        return false;
 
-    JsonNode * node = stack_peek(JsonNode, context->nodeStack);
+    context->input = input;
+    context->remaining = input;
+    context->nodeStack.used = 0;
+    context->dataStack.used = 0;
+    context->result = json_parseResult_createEmpty();
+    context->result.input = input;
 
-    if(node == NULL)
-        return json_parse_error(context, "Expected root node to be left on nodeStack");
-
-    context->result.root = (JsonNode *) context->dataStack.buffer.start;
-    *context->result.root = *node;
-
-    context->remaining = str_createEmpty();
-    stack_destroy(&context->nodeStack);
+    if(stack_reserve(&context->dataStack, sizeof(JsonNode)) == NULL)
+        return json_parseContext_error(context, "Unable to reserve space for root JsonNode on dataStack");
 
     return true;
 }
 
-void json_parse_destroy(JsonParseContext * context) {
+static JsonParseResult json_parseContext_complete(JsonParseContext * context) {
+    if(json_parseContext_trim(context)) {
+        json_parseContext_error(context, "Remaining characters after completion of parsing");
+        goto returnAndClearResult;
+    }
+
+    JsonNode * node = stack_peek(JsonNode, context->nodeStack);
+
+    if(node == NULL) {
+        json_parseContext_error(context, "Expected root node to be left on nodeStack");
+        goto returnAndClearResult;
+    }
+
+    context->result.root.nodes = (JsonNode *) context->dataStack.buffer.start;
+    *context->result.root.nodes = *node;
+    context->result.root.size = (u32) (context->dataStack.used / sizeof(JsonNode));
+
     context->remaining = str_createEmpty();
+
+    returnAndClearResult: {
+        JsonParseResult result = context->result;
+        context->result = json_parseResult_createEmpty();
+        return result;
+    };
+}
+
+static void json_parseContext_partialDestroy(JsonParseContext * context) {
+    context->input = str_createEmpty();
+    context->remaining = str_createEmpty();
+    context->result = json_parseResult_createEmpty();
+    context->result.isError = true;
+    context->result.error = str_create("This JsonParseContext has been partially destroyed");
+    context->result.errorIndex = 0;
+
+    stack_destroy(&context->nodeStack);
+}
+
+void json_parseContext_destroy(JsonParseContext * context) {
+    context->input = str_createEmpty();
+    context->remaining = str_createEmpty();
+    context->result = json_parseResult_createEmpty();
+    context->result.isError = true;
+    context->result.error = str_create("This JsonParseContext has been destroyed");
+    context->result.errorIndex = 0;
 
     stack_destroy(&context->nodeStack);
     stack_destroy(&context->dataStack);
 }
 
-bool json_parse_error(JsonParseContext * context, char * message) {
-    //va_list argList;
-    //va_start(argList, format);
-
-    //String error = str_vformat(format, argList);
-
+static bool json_parseContext_error(JsonParseContext * context, char * message) {
     String error = str_create(message);
 
     if(context->result.isError) {
@@ -222,13 +266,13 @@ bool json_parse_error(JsonParseContext * context, char * message) {
         strbuilder_appendString(&builder, error);
 
         str_destroy(&context->result.error);
-        str_destroy(&error);
 
         context->result.error = builder.string;
     } else {
-        context->result.root = NULL;
+        context->result.root.nodes = NULL;
+        context->result.root.size = 0;
         context->result.isError = true;
-        context->result.error = error;
+        context->result.error = str_copy(error);
 
         if(str_isEmpty(context->remaining)) {
             context->result.errorIndex = context->input.length;
@@ -237,13 +281,10 @@ bool json_parse_error(JsonParseContext * context, char * message) {
         }
     }
 
-    //va_end(argList);
-
-    json_parse_destroy(context);
     return false;
 }
 
-void json_parse_printError(JsonParseResult result) {
+void json_parseResult_printError(JsonParseResult result) {
     const u32 charsAround = 10;
 
     if(result.isError) {
@@ -291,136 +332,201 @@ void json_parse_printError(JsonParseResult result) {
     }
 }
 
-void json_parse_updateNodeReferences(Stack stack, char * previousStart) {
-    s64 pointerChange = (s64) stack.buffer.start - (s64) previousStart;
-
-    JsonNode * nodes = (JsonNode *) stack.buffer.start;
-    u64 nodeCount = stack.used / sizeof(JsonNode);
-
-    for(u64 index = 0; index < nodeCount; ++index) {
-        JsonNode * node = &nodes[index];
-
-        if(node->flags.type == JSON_OBJECT || node->flags.type == JSON_ARRAY) {
-            *((char **) &node->value.object.children) += pointerChange;
-        }
-    }
-}
-
-bool json_parse_appendNode(JsonParseContext * context, JsonNode node) {
-    char * nodeStackPreviousStart = context->nodeStack.buffer.start;
-
+static bool json_parseContext_appendNode(JsonParseContext *context, JsonNode node) {
     JsonNode * appended = stack_appendJsonNode(&context->nodeStack, node);
 
     if(appended == NULL)
-        return json_parse_error(context, "Failure appending value node");
-
-    if(nodeStackPreviousStart != context->nodeStack.buffer.start) {
-        json_parse_updateNodeReferences(context->nodeStack, nodeStackPreviousStart);
-    }
+        return json_parseContext_error(context, "Failure appending value node");
 
     return true;
 }
 
-bool json_parse_completeObject(JsonParseContext * context, JsonNodeFlags flags, JsonKey key, u32 size) {
-    JsonNode * stackNodes = stack_popManyJsonNode(&context->nodeStack, size);
+static bool json_parseContext_completeObject(JsonParseContext * context, JsonNode node) {
+    JsonNode * stackNodes = stack_popManyJsonNode(&context->nodeStack, node.value.object.size);
 
     if(stackNodes == NULL)
-        return json_parse_error(context, "JsonParseObject's size greater than size of node stack");;
+        return json_parseContext_error(context, "JsonParseObject's size greater than size of node stack");
 
-    char * dataStackPreviousStart = context->dataStack.buffer.start;
+    node.value.object.childIndex = (u32) (context->dataStack.used / sizeof(JsonNode));
 
-    JsonNode * nodes = stack_appendManyJsonNode(&context->dataStack, stackNodes, size);
+    JsonNode * nodes = stack_appendManyJsonNode(&context->dataStack, stackNodes, node.value.object.size);
 
     if(nodes == NULL)
-        return json_parse_error(context, "Unable to append JsonNodes to data stack");
+        return json_parseContext_error(context, "Unable to append JsonNodes to data stack");
 
-    if(dataStackPreviousStart != context->dataStack.buffer.start) {
-        json_parse_updateNodeReferences(context->dataStack, dataStackPreviousStart);
-    }
-
-    JsonNode objectNode; {
-        objectNode.flags = flags;
-        objectNode.key = key;
-        objectNode.value.object.size = size;
-        objectNode.value.object.children = nodes;
-    }
-
-    return json_parse_appendNode(context, objectNode);
+    return json_parseContext_appendNode(context, node);
 }
 
-bool json_parse_trim(JsonParseContext * context) {
+static bool json_parseContext_trim(JsonParseContext *context) {
     context->remaining = str_trimLeading(context->remaining);
 
     return context->remaining.length > 0;
 }
 
-char json_parse_next(JsonParseContext * context) {
+static char json_parseContext_next(JsonParseContext *context) {
     return context->remaining.data[0];
 }
 
-void json_parse_chew(JsonParseContext * context, u64 characters) {
+static void json_parseContext_chew(JsonParseContext *context, u64 characters) {
     context->remaining = str_substring(context->remaining, characters, context->remaining.length);
 }
 
-JsonParseResult json_parse(String input) {
-    JsonParseContext context = json_parse_create(input);
+JsonParseResult json_parseContext_parse(JsonParseContext * context, String input) {
+    if(!json_parseContext_init(context, input))
+        return context->result;
 
-    if(context.result.isError)
-        return context.result;
-
-    if(!json_parse_trim(&context)) {
-        json_parse_error(&context, "Empty input");
-        return context.result;
+    if(!json_parseContext_trim(context)) {
+        json_parseContext_error(context, "Empty input");
+        return context->result;
     }
 
-    JsonKey key = {
-            .index = 0
-    };
-
-    JsonNodeFlags flags = {
+    JsonNode node = {
             .parentType = JSON_NONE,
-            .isRoot = true
+            .key.index = 0
     };
 
-    if(!json_parse_parseValue(&context, flags, key))
-        return context.result;
+    if(!json_parseContext_parseValue(context, node))
+        return context->result;
 
-    json_parse_complete(&context);
+    JsonParseResult result = json_parseContext_complete(context);
 
-    return context.result;
+    return result;
 }
 
-bool json_parse_parseValue(JsonParseContext * context, JsonNodeFlags flags, JsonKey key) {
-    char next = json_parse_next(context);
+JsonParseResult json_parse(String input) {
+    JsonParseContext context = json_parseContext_create();
+
+    JsonParseResult result = json_parseContext_parse(&context, input);
+
+    if(result.isError) {
+        json_parseContext_destroy(&context);
+    } else {
+        json_parseContext_partialDestroy(&context);
+    }
+
+    return result;
+}
+
+JsonParseResult json_parseResult_copy(JsonParseResult result) {
+    if(result.isError)
+        return result;
+
+    Buffer copiedData = buffer_copy((Buffer) {
+            .start = (char *) result.root.nodes,
+            .capacity = result.root.size * sizeof(JsonNode)
+    });
+
+    if(buffer_isEmpty(copiedData)) {
+        return (JsonParseResult) {
+                .input = result.input,
+                .root.nodes = NULL,
+                .root.size = 0,
+                .isError = true,
+                .error = str_create("Unable to allocate Buffer to copy result into"),
+                .errorIndex = 0
+        };
+    }
+
+    return (JsonParseResult) {
+            .input = result.input,
+            .root.nodes = (JsonNode *) copiedData.start,
+            .root.size = result.root.size,
+            .isError = false,
+            .error = str_createEmpty(),
+            .errorIndex = 0
+    };
+}
+
+JsonNode json_node_createEmpty() {
+    return (JsonNode) {
+        .type = JSON_NONE,
+        .parentType = JSON_NONE,
+        .key.index = 0
+    };
+}
+
+bool json_node_isEmpty(JsonNode node) {
+    return node.type == JSON_NONE;
+}
+
+JsonNode json_root_get(JsonRoot root, u32 index) {
+    if(index >= root.size)
+        return json_node_createEmpty();
+
+    return root.nodes[index];
+}
+
+JsonNode json_obj_get(JsonRoot root, JsonNode node, u32 index) {
+    if(index >= node.value.object.size)
+        return json_node_createEmpty();
+
+    return json_root_get(root, node.value.object.childIndex + index);
+}
+
+JsonNode json_obj_find(JsonRoot root, JsonNode node, String key) {
+    s32 index = json_obj_findIndex(root, node, key);
+
+    if(index == -1)
+        return json_node_createEmpty();
+
+    return json_root_get(root, node.value.object.childIndex + index);
+}
+
+s32 json_obj_findIndex(JsonRoot root, JsonNode node, String key) {
+    if(node.type != JSON_OBJECT)
+        return -1;
+
+    for(u32 index = 0; index < node.value.object.size; ++index) {
+        JsonNode child = json_obj_get(root, node, index);
+
+        if(str_equals(child.key.name, key))
+            return index;
+    }
+
+    return -1;
+}
+
+void json_parseResult_destroy(JsonParseResult * result) {
+    if(result->isError || result->root.nodes == NULL)
+        return;
+
+    free(result->root.nodes);
+
+    result->root.nodes = NULL;
+    result->root.size = 0;
+    result->isError = true;
+    result->error = str_create("This JsonParseResult has been destroyed");
+    result->errorIndex = 0;
+}
+
+bool json_parseContext_parseValue(JsonParseContext *context, JsonNode node) {
+    char next = json_parseContext_next(context);
 
     switch(next) {
         case '{':
-            json_parse_chew(context, 1);
-            return json_parse_parseObject(context, flags, key);
+            json_parseContext_chew(context, 1);
+            return json_parseContext_parseObject(context, node);
         case '[':
-            json_parse_chew(context, 1);
-            return json_parse_parseArray(context, flags, key);
+            json_parseContext_chew(context, 1);
+            return json_parseContext_parseArray(context, node);
 
         case 't':
-            flags.type = JSON_TRUE;
-            return json_parse_parseExpected(context, flags, key, str_createOfLength("true", 4));
+            node.type = JSON_TRUE;
+            return json_parseContext_parseExpected(context, node, str_createOfLength("true", 4));
         case 'f':
-            flags.type = JSON_FALSE;
-            return json_parse_parseExpected(context, flags, key, str_createOfLength("false", 5));
+            node.type = JSON_FALSE;
+            return json_parseContext_parseExpected(context, node, str_createOfLength("false", 5));
         case 'n':
-            flags.type = JSON_NULL;
-            return json_parse_parseExpected(context, flags, key, str_createOfLength("null", 4));
+            node.type = JSON_NULL;
+            return json_parseContext_parseExpected(context, node, str_createOfLength("null", 4));
 
         case '"': {
-            json_parse_chew(context, 1);
+            json_parseContext_chew(context, 1);
 
-            flags.type = JSON_STRING;
-            JsonNode node = {
-                .flags = flags,
-                .key = key
-            };
+            node.type = JSON_STRING;
 
-            return json_parse_parseString(context, &node.value.string) && json_parse_appendNode(context, node);
+            return json_parseContext_parseString(context, &node.value.string)
+                   && json_parseContext_appendNode(context, node);
         }
 
         case '-':
@@ -434,73 +540,68 @@ bool json_parse_parseValue(JsonParseContext * context, JsonNodeFlags flags, Json
         case '7':
         case '8':
         case '9':
-            return json_parse_parseNumber(context, flags, key);
+            return json_parseContext_parseNumber(context, node);
 
         default:
-            return json_parse_error(context, "Unexpected character while expecting value");
+            return json_parseContext_error(context, "Unexpected character while expecting value");
     }
 }
 
-bool json_parse_parseExpected(JsonParseContext * context, JsonNodeFlags flags, JsonKey key, String expected) {
+bool json_parseContext_parseExpected(JsonParseContext * context, JsonNode node, String expected) {
     if(!str_startsWith(context->remaining, expected)) {
         String message = str_createUninitialised(9 + expected.length);
 
         str_setChars(message, 0, str_create("Expected "));
         str_setChars(message, 9, expected);
 
-        json_parse_error(context, str_toCString(message));
+        json_parseContext_error(context, str_toCString(message));
 
         str_destroy(&message);
 
         return false;
     }
 
-    json_parse_chew(context, expected.length);
+    json_parseContext_chew(context, expected.length);
 
-    JsonNode node; {
-        node.flags = flags;
-        node.key = key;
-    }
-
-    return json_parse_appendNode(context, node);
+    return json_parseContext_appendNode(context, node);
 }
 
-#define __json_parseString_parseHex4(value)                                   \
-    do {                                                                      \
-        u8 c;                                                                 \
-                                                                              \
-        for(u64 i = 0; i < 4; ++i) {                                          \
-            c = (u8) context->remaining.data[index++];                        \
-                                                                              \
-            if(c >= '0' && c <= '9') {                                        \
-                c -= '0';                                                     \
-            } else if(c >= 'a' && c <= 'f') {                                 \
-                c -= 'a' - 10;                                                \
-            } else if(c >= 'A' && c <= 'F') {                                 \
-                c -= 'A' - 10;                                                \
-            } else {                                                          \
-                json_parse_chew(context, index - 1);                          \
-                return json_parse_error(context, "Expected hex character");   \
-            }                                                                 \
-                                                                              \
-            value <<= 4;                                                      \
-            value |= c;                                                       \
-        }                                                                     \
+#define __json_parseString_parseHex4(value)                                          \
+    do {                                                                             \
+        u8 c;                                                                        \
+                                                                                     \
+        for(u64 i = 0; i < 4; ++i) {                                                 \
+            c = (u8) context->remaining.data[index++];                               \
+                                                                                     \
+            if(c >= '0' && c <= '9') {                                               \
+                c -= '0';                                                            \
+            } else if(c >= 'a' && c <= 'f') {                                        \
+                c -= 'a' - 10;                                                       \
+            } else if(c >= 'A' && c <= 'F') {                                        \
+                c -= 'A' - 10;                                                       \
+            } else {                                                                 \
+                json_parseContext_chew(context, index - 1);                          \
+                return json_parseContext_error(context, "Expected hex character");   \
+            }                                                                        \
+                                                                                     \
+            value <<= 4;                                                             \
+            value |= c;                                                              \
+        }                                                                            \
     } while(0)
 
-#define __json_parseString_expect(character)                                                     \
-    do {                                                                                         \
-        if(index >= context->remaining.length) {                                                 \
-            json_parse_chew(context, index);                                                     \
-            return json_parse_error(context, "Expected second half of UTF-16 surrogate pair");   \
-        }                                                                                        \
-        if(context->remaining.data[index++] != character) {                                      \
-            json_parse_chew(context, index - 1);                                                 \
-            return json_parse_error(context, "Expected second half of UTF-16 surrogate pair");   \
-        }                                                                                        \
+#define __json_parseString_expect(character)                                                            \
+    do {                                                                                                \
+        if(index >= context->remaining.length) {                                                        \
+            json_parseContext_chew(context, index);                                                     \
+            return json_parseContext_error(context, "Expected second half of UTF-16 surrogate pair");   \
+        }                                                                                               \
+        if(context->remaining.data[index++] != character) {                                             \
+            json_parseContext_chew(context, index - 1);                                                 \
+            return json_parseContext_error(context, "Expected second half of UTF-16 surrogate pair");   \
+        }                                                                                               \
     } while (0)
 
-bool json_parse_parseString(JsonParseContext * context, String * value) {
+bool json_parseContext_parseString(JsonParseContext * context, String * value) {
     value->length = 0;
     value->data = context->remaining.data;
 
@@ -511,8 +612,8 @@ bool json_parse_parseString(JsonParseContext * context, String * value) {
         char next = context->remaining.data[index++];
 
         if(char_isControlCharacter(next)) {
-            json_parse_chew(context, index - 1);
-            return json_parse_error(context, "Control character in string");
+            json_parseContext_chew(context, index - 1);
+            return json_parseContext_error(context, "Control character in string");
         }
 
         if(next == '"') {
@@ -520,7 +621,7 @@ bool json_parse_parseString(JsonParseContext * context, String * value) {
             memmove(&value->data[value->length], &context->remaining.data[copyFromIndex], copyBack);
             value->length += copyBack;
 
-            json_parse_chew(context, index);
+            json_parseContext_chew(context, index);
             return true;
         }
 
@@ -530,16 +631,16 @@ bool json_parse_parseString(JsonParseContext * context, String * value) {
             value->length += copyBack;
 
             if(index >= context->remaining.length) {
-                json_parse_chew(context, index);
-                return json_parse_error(context, "Unexpected eof while parsing string");
+                json_parseContext_chew(context, index);
+                return json_parseContext_error(context, "Unexpected eof while parsing string");
             }
 
             next = context->remaining.data[index++];
 
             if(next == 'u') {
                 if(index + 3 >= context->remaining.length) {
-                    json_parse_chew(context, context->remaining.length);
-                    return json_parse_error(context, "Unexpected eof while parsing UCS codepoint");
+                    json_parseContext_chew(context, context->remaining.length);
+                    return json_parseContext_error(context, "Unexpected eof while parsing UCS codepoint");
                 }
 
                 u32 codepoint = 0; {
@@ -549,8 +650,8 @@ bool json_parse_parseString(JsonParseContext * context, String * value) {
                 // UTF-16 Surrogate pair
                 if(codepoint >= 0xD800 && codepoint <= 0xDFFF) {
                     if(codepoint >= 0xDC00) {
-                        json_parse_chew(context, index - 5);
-                        return json_parse_error(context, "Unexpected second half of UTF-16 surrogate pair");
+                        json_parseContext_chew(context, index - 5);
+                        return json_parseContext_error(context, "Unexpected second half of UTF-16 surrogate pair");
                     }
 
                     u16 lo = (u16) codepoint;
@@ -561,8 +662,8 @@ bool json_parse_parseString(JsonParseContext * context, String * value) {
                     }
 
                     if(hi <= 0xDBFF) {
-                        json_parse_chew(context, index - 5);
-                        return json_parse_error(context, "Expected second half of UTF-16 surrogate pair");
+                        json_parseContext_chew(context, index - 5);
+                        return json_parseContext_error(context, "Expected second half of UTF-16 surrogate pair");
                     }
 
                     u16 buffer[2];
@@ -613,8 +714,8 @@ bool json_parse_parseString(JsonParseContext * context, String * value) {
                     escapedValue = '\t';
                     break;
                 default:
-                    json_parse_chew(context, index - 1);
-                    return json_parse_error(context, "Invalid escape sequence");
+                    json_parseContext_chew(context, index - 1);
+                    return json_parseContext_error(context, "Invalid escape sequence");
             }
 
             value->data[value->length] = escapedValue;
@@ -624,41 +725,40 @@ bool json_parse_parseString(JsonParseContext * context, String * value) {
         }
     }
 
-    return json_parse_error(context, "Unexpected eof while parsing string");
+    return json_parseContext_error(context, "Unexpected eof while parsing string");
 }
 
 #undef __json_parseString_parseHex4
 
-#define __jsonParseNumber_consumeOne()                                          \
-    do {                                                                        \
-        json_parse_chew(context, 1);                                            \
-        number.length += 1;                                                     \
-        if(context->remaining.length == 0) {                                    \
-            goto finishNumber;                                                  \
-        }                                                                       \
-        next = json_parse_next(context);                                        \
+#define __jsonParseNumber_consumeOne()            \
+    do {                                          \
+        json_parseContext_chew(context, 1);       \
+        node.value.string.length += 1;            \
+        if(context->remaining.length == 0) {      \
+            goto finishNumber;                    \
+        }                                         \
+        next = json_parseContext_next(context);   \
     } while(0)
 
-#define __jsonParseNumber_consumeOneRequireNext()                               \
-    do {                                                                        \
-        json_parse_chew(context, 1);                                            \
-        number.length += 1;                                                     \
-        if(context->remaining.length == 0) {                                    \
-            json_parse_error(context, "Unexpected eof while parsing number");   \
-            return false;                                                       \
-        }                                                                       \
-        next = json_parse_next(context);                                        \
+#define __jsonParseNumber_consumeOneRequireNext()                                      \
+    do {                                                                               \
+        json_parseContext_chew(context, 1);                                            \
+        node.value.string.length += 1;                                                 \
+        if(context->remaining.length == 0) {                                           \
+            json_parseContext_error(context, "Unexpected eof while parsing number");   \
+            return false;                                                              \
+        }                                                                              \
+        next = json_parseContext_next(context);                                        \
     } while(0)
 
-bool json_parse_parseNumber(JsonParseContext * context, JsonNodeFlags flags, JsonKey key) {
-    flags.type = JSON_NUMBER;
+bool json_parseContext_parseNumber(JsonParseContext * context, JsonNode node) {
+    node.type = JSON_NUMBER;
+    node.value.string = (String) {
+        .data = context->remaining.data,
+        .length = 0
+    };
 
-    String number; {
-        number.data = context->remaining.data;
-        number.length = 0;
-    }
-
-    char next = json_parse_next(context);
+    char next = json_parseContext_next(context);
 
     if(next == '-') {
         __jsonParseNumber_consumeOneRequireNext();
@@ -668,7 +768,7 @@ bool json_parse_parseNumber(JsonParseContext * context, JsonNodeFlags flags, Jso
         __jsonParseNumber_consumeOne();
 
         if(char_isDigit(next)) {
-            json_parse_error(context, "Unexpected digit after 0 in number");
+            json_parseContext_error(context, "Unexpected digit after 0 in number");
             return false;
         }
     } else if(char_isDigit(next)) {
@@ -676,14 +776,14 @@ bool json_parse_parseNumber(JsonParseContext * context, JsonNodeFlags flags, Jso
             __jsonParseNumber_consumeOne();
         } while(char_isDigit(next));
     } else {
-        return json_parse_error(context, "Expected digit");
+        return json_parseContext_error(context, "Expected digit");
     }
 
     if(next == '.') {
         __jsonParseNumber_consumeOneRequireNext();
 
         if(!char_isDigit(next)) {
-            json_parse_error(context, "Expected digit after .");
+            json_parseContext_error(context, "Expected digit after .");
             return false;
         }
 
@@ -704,130 +804,115 @@ bool json_parse_parseNumber(JsonParseContext * context, JsonNodeFlags flags, Jso
                 __jsonParseNumber_consumeOne();
             } while(char_isDigit(next));
         } else {
-            return json_parse_error(context, "Expected digit in exponent of number");
+            return json_parseContext_error(context, "Expected digit in exponent of number");
         }
     }
 
     finishNumber: {
-        JsonNode node; {
-            node.flags = flags;
-            node.key = key;
-            node.value.string = number;
-        }
-
-        return json_parse_appendNode(context, node);
+        return json_parseContext_appendNode(context, node);
     }
 }
 
 #undef __jsonParseNumber_consumeOne
 #undef __jsonParseNumber_consumeOneRequireNext
 
-bool json_parse_parseObject(JsonParseContext * context, JsonNodeFlags flags, JsonKey objectKey) {
-    flags.type = JSON_OBJECT;
+bool json_parseContext_parseObject(JsonParseContext * context, JsonNode node) {
+    node.type = JSON_OBJECT;
+    node.value.object.size = 0;
 
-    JsonNodeFlags childFlags = {
-            .parentType = JSON_OBJECT,
-            .isRoot = false
+    JsonNode childNode = {
+            .parentType = JSON_OBJECT
     };
 
-    u32 size = 0;
-    JsonKey key;
-    char next;
-
     while(true) {
-        if(!json_parse_trim(context))
-            return json_parse_error(context, "Unexpected eof while parsing object");
+        if(!json_parseContext_trim(context))
+            return json_parseContext_error(context, "Unexpected eof while parsing object");
 
-        next = json_parse_next(context);
+        char next = json_parseContext_next(context);
 
         if(next == '}') {
-            json_parse_chew(context, 1);
-            return json_parse_completeObject(context, flags, objectKey, size);
+            json_parseContext_chew(context, 1);
+            return json_parseContext_completeObject(context, node);
         }
 
-        if(size != 0) {
+        if(node.value.object.size != 0) {
             if(next != ',')
-                return json_parse_error(context, "Expected , or } while parsing object");
+                return json_parseContext_error(context, "Expected , or } while parsing object");
 
-            json_parse_chew(context, 1);
+            json_parseContext_chew(context, 1);
 
-            if(!json_parse_trim(context))
-                return json_parse_error(context, "Unexpected eof while parsing object");
+            if(!json_parseContext_trim(context))
+                return json_parseContext_error(context, "Unexpected eof while parsing object");
 
-            next = json_parse_next(context);
+            next = json_parseContext_next(context);
         }
 
         if(next != '"')
-            return json_parse_error(context, "Expected \" for start of key while parsing object");
+            return json_parseContext_error(context, "Expected \" for start of key while parsing object");
 
-        json_parse_chew(context, 1);
+        json_parseContext_chew(context, 1);
+        json_parseContext_parseString(context, &childNode.key.name);
 
-        json_parse_parseString(context, &key.name);
-
-        if(str_isEmpty(key.name) && context->result.isError)
+        if(str_isEmpty(childNode.key.name) && context->result.isError)
             return false;
 
-        if(!json_parse_trim(context))
-            return json_parse_error(context, "Unexpected eof while parsing object");
+        if(!json_parseContext_trim(context))
+            return json_parseContext_error(context, "Unexpected eof while parsing object");
 
-        next = json_parse_next(context);
+        next = json_parseContext_next(context);
 
         if(next != ':')
-            return json_parse_error(context, "Expected : while parsing object");
+            return json_parseContext_error(context, "Expected : while parsing object");
 
-        json_parse_chew(context, 1);
+        json_parseContext_chew(context, 1);
 
-        if(!json_parse_trim(context))
-            return json_parse_error(context, "Unexpected eof while parsing object");
+        if(!json_parseContext_trim(context))
+            return json_parseContext_error(context, "Unexpected eof while parsing object");
 
-        if(!json_parse_parseValue(context, childFlags, key))
+        if(!json_parseContext_parseValue(context, childNode))
             return false;
 
-        size += 1;
+        node.value.object.size += 1;
     };
 
     return false;
 }
 
-bool json_parse_parseArray(JsonParseContext * context, JsonNodeFlags flags, JsonKey arrayKey) {
-    flags.type = JSON_ARRAY;
+static bool json_parseContext_parseArray(JsonParseContext * context, JsonNode node) {
+    node.type = JSON_ARRAY;
+    node.value.object.size = 0;
 
-    JsonNodeFlags childFlags = {
-            .parentType = JSON_ARRAY,
-            .isRoot = false
+    JsonNode childNode = {
+            .parentType = JSON_ARRAY
     };
 
-    u32 size = 0;
-    JsonKey key;
-    char next;
-
     while(true) {
-        if(!json_parse_trim(context))
-            return json_parse_error(context, "Unexpected eof while parsing array");
+        if(!json_parseContext_trim(context))
+            return json_parseContext_error(context, "Unexpected eof while parsing array");
 
-        next = json_parse_next(context);
+        char next = json_parseContext_next(context);
 
         if(next == ']') {
-            json_parse_chew(context, 1);
-            return json_parse_completeObject(context, flags, arrayKey, size);
+            json_parseContext_chew(context, 1);
+            return json_parseContext_completeObject(context, node);
         }
 
-        if(size != 0) {
+        if(node.value.object.size != 0) {
             if(next != ',')
-                return json_parse_error(context, "Expected , or ] while parsing array");
+                return json_parseContext_error(context, "Expected , or ] while parsing array");
 
-            json_parse_chew(context, 1);
+            json_parseContext_chew(context, 1);
 
-            if(!json_parse_trim(context))
-                return json_parse_error(context, "Unexpected eof while parsing array");
+            if(!json_parseContext_trim(context))
+                return json_parseContext_error(context, "Unexpected eof while parsing array");
         }
 
-        key.index = size;
+        childNode.key.index = node.value.object.size;
 
-        if(!json_parse_parseValue(context, childFlags, key))
+        if(!json_parseContext_parseValue(context, childNode))
             return false;
 
-        size += 1;
+        node.value.object.size += 1;
     };
 
     return false;
@@ -837,6 +922,17 @@ bool json_parse_parseArray(JsonParseContext * context, JsonNodeFlags flags, Json
 
 //
 // Stringify
+//
+
+/*!
+ * Append whitespace to depth {depth} in {builder}.
+ */
+static void json_prettify_indent(StringBuilder * builder, u64 depth);
+
+
+
+//
+// Stringify Implementation
 //
 
 String json_quoteString(String unquoted) {
@@ -921,16 +1017,16 @@ bool json_quoteStringInto(String unquoted, StringBuilder * builder) {
     return true;
 }
 
-String json_stringify(JsonNode * node) {
+String json_stringify(JsonRoot root, JsonNode node) {
     StringBuilder stringBuilder = strbuilder_create(32);
 
-    json_stringifyInto(node, &stringBuilder);
+    json_stringifyInto(root, node, &stringBuilder);
 
     return stringBuilder.string;
 }
 
-void json_stringifyInto(JsonNode * value, StringBuilder * builder) {
-    switch(value->flags.type) {
+void json_stringifyInto(JsonRoot root, JsonNode node, StringBuilder * builder) {
+    switch(node.type) {
         case JSON_TRUE:
             strbuilder_appendString(builder, str_createOfLength("true", 4));
             break;
@@ -941,30 +1037,29 @@ void json_stringifyInto(JsonNode * value, StringBuilder * builder) {
             strbuilder_appendString(builder, str_createOfLength("null", 4));
             break;
         case JSON_NUMBER:
-            strbuilder_appendString(builder, value->value.string);
+            strbuilder_appendString(builder, node.value.string);
             break;
         case JSON_STRING:
             strbuilder_appendChar(builder, '"');
-            json_quoteStringInto(value->value.string, builder);
+            json_quoteStringInto(node.value.string, builder);
             strbuilder_appendChar(builder, '"');
             break;
 
         case JSON_OBJECT: {
-            JsonObject object = value->value.object;
-
             strbuilder_appendChar(builder, '{');
 
-            for(int index = 0; index < object.size; ++index) {
+            for(u32 index = 0; index < node.value.object.size; ++index) {
                 if(index != 0) {
                     strbuilder_appendChar(builder, ',');
                 }
 
-                JsonNode * node = &object.children[index];
+                JsonNode child = json_obj_get(root, node, index);
 
                 strbuilder_appendChar(builder, '"');
-                json_quoteStringInto(node->key.name, builder);
+                json_quoteStringInto(child.key.name, builder);
                 strbuilder_appendCString(builder, "\":");
-                json_stringifyInto(node, builder);
+
+                json_stringifyInto(root, child, builder);
             }
 
             strbuilder_appendChar(builder, '}');
@@ -973,18 +1068,16 @@ void json_stringifyInto(JsonNode * value, StringBuilder * builder) {
         }
 
         case JSON_ARRAY: {
-            JsonObject object = value->value.object;
-
             strbuilder_appendChar(builder, '[');
 
-            for(int index = 0; index < object.size; ++index) {
+            for(u32 index = 0; index < node.value.object.size; ++index) {
                 if(index != 0) {
                     strbuilder_appendChar(builder, ',');
                 }
 
-                JsonNode * node = &object.children[index];
+                JsonNode child = json_obj_get(root, node, index);
 
-                json_stringifyInto(node, builder);
+                json_stringifyInto(root, child, builder);
             }
 
             strbuilder_appendChar(builder, ']');
@@ -995,117 +1088,7 @@ void json_stringifyInto(JsonNode * value, StringBuilder * builder) {
         default: {
             // TODO: Error reporting
 
-            String string = str_format("Unknown type %s", JsonTypeNames[value->flags.type]);
-
-            strbuilder_appendString(builder, string);
-
-            str_destroy(&string);
-            break;
-        }
-    }
-}
-
-String json_prettify(JsonNode * value) {
-    StringBuilder stringBuilder = strbuilder_create(32);
-
-    json_prettifyInto(value, &stringBuilder, 0);
-
-    return stringBuilder.string;
-}
-
-void json_prettify_indent(StringBuilder * builder, u64 depth) {
-    String indentation = JSON_PRETTIFY_INDENTATION;
-
-    for(u64 index = 0; index < depth; ++index) {
-        strbuilder_appendString(builder, indentation);
-    }
-}
-
-void json_prettifyInto(JsonNode * value, StringBuilder * builder, u64 depth) {
-    switch(value->flags.type) {
-        case JSON_TRUE:
-            strbuilder_appendCString(builder, "true");
-            break;
-        case JSON_FALSE:
-            strbuilder_appendCString(builder, "false");
-            break;
-        case JSON_NULL:
-            strbuilder_appendCString(builder, "null");
-            break;
-        case JSON_NUMBER:
-            strbuilder_appendString(builder, value->value.string);
-            break;
-        case JSON_STRING:
-            strbuilder_appendChar(builder, '"');
-            json_quoteStringInto(value->value.string, builder);
-            strbuilder_appendChar(builder, '"');
-            break;
-
-        case JSON_OBJECT: {
-            JsonObject object = value->value.object;
-
-            if(object.size > 0) {
-                strbuilder_appendCString(builder, "{");
-
-                for(int index = 0; index < object.size; ++index) {
-                    if(index != 0) {
-                        strbuilder_appendCString(builder, ", ");
-                    }
-
-                    strbuilder_appendChar(builder, '\n');
-                    json_prettify_indent(builder, depth + 1);
-
-                    JsonNode * node = &object.children[index];
-
-                    strbuilder_appendChar(builder, '"');
-                    json_quoteStringInto(node->key.name, builder);
-                    strbuilder_appendCString(builder, "\": ");
-                    json_prettifyInto(node, builder, depth + 1);
-                }
-
-                strbuilder_appendChar(builder, '\n');
-                json_prettify_indent(builder, depth);
-                strbuilder_appendChar(builder, '}');
-            } else {
-                strbuilder_appendCString(builder, "{}");
-            }
-
-            break;
-        }
-
-        case JSON_ARRAY: {
-            JsonObject object = value->value.object;
-
-            if(object.size > 0) {
-                strbuilder_appendCString(builder, "[");
-
-                for(int index = 0; index < object.size; ++index) {
-                    if(index != 0) {
-                        strbuilder_appendCString(builder, ", ");
-                    }
-
-                    strbuilder_appendChar(builder, '\n');
-                    json_prettify_indent(builder, depth + 1);
-
-                    JsonNode * node = &object.children[index];
-
-                    json_prettifyInto(node, builder, depth + 1);
-                }
-
-                strbuilder_appendChar(builder, '\n');
-                json_prettify_indent(builder, depth);
-                strbuilder_appendChar(builder, ']');
-            } else {
-                strbuilder_appendCString(builder, "[]");
-            }
-
-            break;
-        }
-
-        default: {
-            // TODO: Error reporting
-
-            String string = str_format("Unknown type %s", JsonTypeNames[value->flags.type]);
+            String string = str_format("Unknown type %d", node.type);
 
             strbuilder_appendString(builder, string);
 

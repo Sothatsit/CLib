@@ -1,21 +1,21 @@
 #include "test.h"
 #include "testNumbers.h"
+#include "testSorting.h"
 #include "testString.h"
 #include "testStringBuilder.h"
 #include "testUTF.h"
 #include "testBuffer.h"
 #include "testStack.h"
-#include "testJson.h"
 #include "testExamples.h"
 
 void test_all(int * failures, int * successes) {
     test_numbers(failures, successes);
+    test_sorting(failures, successes);
     test_String(failures, successes);
     test_StringBuilder(failures, successes);
     test_UTF(failures, successes);
     test_Buffer(failures, successes);
     test_Stack(failures, successes);
-    test_json(failures, successes);
     test_examples(failures, successes);
 }
 
@@ -45,6 +45,10 @@ int main(int argc, char *argv[]) {
 }
 
 void runTest(char * name, TestFunction testFunction, int * failures, int * successes) {
+    if(DEBUG) {
+        printf(GREEN BOLD "Running" RESET " : " MAGENTA "%s" RESET "\n", name);
+    }
+
     clock_t begin = clock();
 
     bool success = testFunction();

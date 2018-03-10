@@ -21,7 +21,7 @@ typedef struct TestStruct {
     String string;
 } TestStruct;
 
-define_stack_typedFunctions(TestStruct);
+stack_defineTypedFunctions(TestStruct);
 
 bool test_stack_create() {
     Stack stack = stack_create(32);

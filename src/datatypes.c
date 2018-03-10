@@ -47,6 +47,168 @@ u64 u64_nextPowerOf2(u64 n) {
 
 
 //
+// Sorting
+//
+
+void u64_insertionSort(u64 * source, u64 length) {
+    for(u64 index = 1; index < length; ++index) {
+        u64 value = source[index];
+        u64 lookBackIndex = index;
+
+        while(lookBackIndex > 0 && source[lookBackIndex - 1] > value) {
+            source[lookBackIndex] = source[lookBackIndex - 1];
+
+            lookBackIndex -= 1;
+        }
+
+        source[lookBackIndex] = value;
+    }
+}
+
+
+
+/*!
+ * Perform a quick sort over the array {array} of length {length} from {left} to {right} inclusive.
+ *
+ * Will sort {array} from {left} to {right} inclusive in ascending order.
+ */
+static void u64_quickSort_overRange(u64 * array, u64 left, u64 right);
+
+/*
+ * Using the rightmost element as the pivot, place all elements
+ * greater than the pivot to the right of the pivot and all
+ * elements less than the pivot to its left.
+ *
+ * Returns the index of the pivot after partitioning.
+ */
+static u64 u64_quickSort_partition(u64 * array, u64 left, u64 right);
+
+void u64_quickSort(u64 * array, u64 length) {
+    u64_quickSort_overRange(array, 0, length - 1);
+}
+
+static void u64_quickSort_overRange(u64 * array, u64 left, u64 right) {
+    if(left >= right || right == (u64) -1)
+        return;
+
+    u64 partition = u64_quickSort_partition(array, left, right);
+    u64_quickSort_overRange(array, partition + 1, right);
+    u64_quickSort_overRange(array, left, partition - 1);
+}
+
+static u64 u64_quickSort_partition(u64 * array, u64 left, u64 right) {
+    u64 pivot = array[right];
+
+    u64 smallerIndex = left;
+
+    for(u64 index = left; index < right; ++index) {
+        if(array[index] > pivot)
+            continue;
+
+        u64 temp = array[smallerIndex];
+        array[smallerIndex] = array[index];
+        array[index] = temp;
+
+        smallerIndex += 1;
+    }
+
+    array[right] = array[smallerIndex];
+    array[smallerIndex] = pivot;
+
+    return smallerIndex;
+}
+
+
+
+/*!
+ * Merge the two sorted arrays {array} from {left} inclusive to {middle} exclusive and {source}
+ * from {middle} inclusive to {right} inclusive, with {buffer} used as intermediate storage.
+ *
+ * The array {buffer} must have a length of at least {right} + 1.
+ */
+static void u64_merge(u64 * array, u64 * buffer, u64 left, u64 middle, u64 right);
+
+bool u64_mergeSort(u64 * array, u64 length) {
+    u64 * buffer = malloc(length * sizeof(u64));
+
+    if(buffer == NULL)
+        return false;
+
+    u64_mergeSort_withBuffer(array, buffer, length);
+
+    return true;
+}
+
+void u64_mergeSort_withBuffer(u64 * array, u64 * buffer, u64 length) {
+    u64 index = 0;
+
+    while(index + 1 < length) {
+        u64 first = array[index];
+        u64 second = array[index + 1];
+
+        if(first > second) {
+            array[index] = second;
+            array[index + 1] = first;
+        }
+
+        index += 2;
+    }
+
+    u64 groupSize = 2;
+    index = 0;
+
+    while(groupSize < length) {
+        while(index + groupSize < length) {
+            u64 left = index;
+            u64 middle = index + groupSize;
+            u64 right = min(index + 2 * groupSize, length) - 1;
+
+            u64_merge(array, buffer, left, middle, right);
+
+            index += 2 * groupSize;
+        }
+
+        index = 0;
+        groupSize *= 2;
+    }
+}
+
+static void u64_merge(u64 * array, u64 * buffer, u64 left, u64 middle, u64 right) {
+    memcpy(&buffer[left], &array[left], (right - left + 1) * sizeof(u64));
+
+    u64 leftIndex = left;
+    u64 rightIndex = middle;
+
+    u64 index = left;
+
+    while(leftIndex < middle && rightIndex <= right) {
+        if(buffer[leftIndex] < buffer[rightIndex]) {
+            array[index] = buffer[leftIndex];
+            leftIndex += 1;
+            index += 1;
+        } else {
+            array[index] = buffer[rightIndex];
+            rightIndex += 1;
+            index += 1;
+        }
+    }
+
+    while(leftIndex < middle) {
+        array[index] = buffer[leftIndex];
+        leftIndex += 1;
+        index += 1;
+    }
+
+    while(rightIndex <= right) {
+        array[index] = buffer[rightIndex];
+        rightIndex += 1;
+        index += 1;
+    }
+}
+
+
+
+//
 // Strings
 //
 
@@ -498,6 +660,12 @@ String str_splitAtCString(String * remaining, char * delimiter) {
     return str_splitAtString(remaining, str_create(delimiter));
 }
 
+
+
+//
+// File IO
+//
+
 String str_readFile(char * filename) {
     FILE * file = fopen(filename, "rb");
 
@@ -650,6 +818,38 @@ bool strbuilder_appendCString(StringBuilder * stringBuilder, char * string) {
 bool strbuilder_appendSubstring(StringBuilder * stringBuilder, String string, u64 start, u64 end) {
     return strbuilder_appendString(stringBuilder, str_substring(string, start, end));
 }
+
+
+
+//
+// String Conversions
+//
+
+String u64_arrayToString(u64 * array, u64 length) {
+    StringBuilder builder = strbuilder_create(32);
+
+    strbuilder_appendCString(&builder, "[");
+
+    for(u64 index = 0; index < length; ++index) {
+        if(index != 0) {
+            strbuilder_appendCString(&builder, ", ");
+        }
+
+        String number = str_format("%lld", array[index]);
+
+        strbuilder_appendString(&builder, number);
+    }
+
+    strbuilder_appendCString(&builder, "]");
+
+    return builder.string;
+}
+
+
+
+//
+// Unicode
+//
 
 #define __utf8ToCodepoint_nextChar(remaining, next)   \
     do {                                              \

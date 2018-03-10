@@ -68,6 +68,48 @@ u64 u64_nextPowerOf2(u64 number);
 
 
 //
+// Sorting
+//
+
+/*!
+ * Perform an insertion sort over the array {source} of length {length}.
+ *
+ * Will sort {source} in ascending order.
+ */
+void u64_insertionSort(u64 * source, u64 length);
+
+/*!
+ * Perform a quick sort over the array {array} of length {length}.
+ *
+ * Will sort {array} in ascending order.
+ */
+void u64_quickSort(u64 * array, u64 length);
+
+/*!
+ * Perform a merge sort over the array {array} of length {length}.
+ *
+ * Must allocate a buffer of size {length} for intermediate storage
+ * for use in sorting. If this is unwanted use u64_mergeSortNoAlloc.
+ *
+ * Will sort {array} in ascending order.
+ *
+ * Returns whether it was successful.
+ */
+bool u64_mergeSort(u64 * array, u64 length);
+
+/*
+ * Perform a merge sort over the array {array} of length {length},
+ * using the buffer {buffer} for intermediate storage during the sort.
+ *
+ * Will sort {array} in ascending order.
+ *
+ * The buffer {buffer} must have a length of at least {length}.
+ */
+void u64_mergeSort_withBuffer(u64 * array, u64 * buffer, u64 length);
+
+
+
+//
 // Characters
 //
 
@@ -463,6 +505,12 @@ String str_splitAtString(String *remaining, String delimiter);
  */
 String str_splitAtCString(String * remaining, char * delimiter);
 
+
+
+//
+// File IO
+//
+
 /*!
  * Load a file into a String.
  *
@@ -563,6 +611,17 @@ bool strbuilder_appendCString(StringBuilder * stringBuilder, char * string);
  * Will append a substring of {string} between {start} and {end} to {stringBuilder}.
  */
 bool strbuilder_appendSubstring(StringBuilder * stringBuilder, String string, u64 start, u64 end);
+
+
+
+//
+// String conversions
+//
+
+/*!
+ *
+ */
+String u64_arrayToString(u64 * array, u64 length);
 
 
 
@@ -805,12 +864,12 @@ char * stack_appendData(Stack * stack, char * data, u64 length);
  *
  * to append {value} of type {type} to {stack}
  */
-#define define_stack_typedFunctions(type)   \
-    define_stack_typedCreate(type)          \
-    define_stack_typedAppend(type);         \
-    define_stack_typedAppendMany(type);     \
-    define_stack_typedPopMany(type);        \
-    define_stack_typedPop(type)
+#define stack_defineTypedFunctions(type)   \
+    stack_defineTypedCreate(type)          \
+    stack_defineTypedAppend(type);         \
+    stack_defineTypedAppendMany(type);     \
+    stack_defineTypedPopMany(type);        \
+    stack_defineTypedPop(type)
 
 /*!
  * Define a function to create a stack of type {type} with
@@ -826,7 +885,7 @@ char * stack_appendData(Stack * stack, char * data, u64 length);
  *
  * Will return a Stack with capacity 0 on error or if {intialCapacity} is 0.
  */
-#define define_stack_typedCreate(type)                         \
+#define stack_defineTypedCreate(type)                          \
     static Stack stack_createOf##type(u64 initialCapacity) {   \
         return stack_create(initialCapacity * sizeof(type));   \
     }
@@ -844,7 +903,7 @@ char * stack_appendData(Stack * stack, char * data, u64 length);
  *
  * Will return NULL if it is unable to append the value.
  */
-#define define_stack_typedAppend(type)                                 \
+#define stack_defineTypedAppend(type)                                  \
     static type * stack_append##type(Stack * stack, type value) {      \
         if(!stack_ensureCapacity(stack, stack->used + sizeof(type)))   \
             return NULL;                                               \
@@ -870,7 +929,7 @@ char * stack_appendData(Stack * stack, char * data, u64 length);
  *
  * Will return NULL if it is unable to append the values.
  */
-#define define_stack_typedAppendMany(type)                                              \
+#define stack_defineTypedAppendMany(type)                                               \
     static type * stack_appendMany##type(Stack * stack, type * data, u64 count) {       \
         return (type *) stack_appendData(stack, (char *) data, count * sizeof(type));   \
     }
@@ -888,7 +947,7 @@ char * stack_appendData(Stack * stack, char * data, u64 length);
  *
  *  Will return NULL if there are no elements on {stack}.
  */
-#define define_stack_typedPop(type)                    \
+#define stack_defineTypedPop(type)                     \
     static type * stack_pop##type(Stack * stack) {     \
         return stack_popMany##type(stack, 1);          \
     }
@@ -906,7 +965,7 @@ char * stack_appendData(Stack * stack, char * data, u64 length);
  *
  * Will return NULL if there are not {count} values on {stack}.
  */
-#define define_stack_typedPopMany(type)                             \
+#define stack_defineTypedPopMany(type)                              \
     static type * stack_popMany##type(Stack * stack, u64 count) {   \
         if(stack->used < count * sizeof(type))                      \
             return NULL;                                            \

@@ -11,6 +11,14 @@
 
 
 //
+// Options
+//
+
+#define DEBUG false
+
+
+
+//
 // Print Constants
 //
 
@@ -26,23 +34,36 @@
 //
 
 /*
+ * Print the location of where this macro is used.
+ */
+#define printErrorLocation() \
+    printf(ERROR " : " YELLOW "line %d" RESET " in " YELLOW __FILE__ RESET "\n", __LINE__)
+
+/*
+ * Print an error to console.
+ */
+#define error(message, ...)                        \
+    do {                                           \
+        printErrorLocation();                      \
+        printf(" " message "\n", ##__VA_ARGS__);   \
+    } while(0)
+
+/*
  * Assert {condition} is true, returning false from the current function if it is false.
  */
-#define assert(condition)                                                                           \
-    do {if(!(condition)) {                                                                          \
-         printf(ERROR " : " YELLOW "line %d" RESET " in " YELLOW __FILE__ RESET "\n", __LINE__);    \
-         printf("%s\n", #condition);                                                                \
-         return false;                                                                              \
+#define assert(condition)        \
+    do {if(!(condition)) {       \
+         printErrorLocation();   \
+         return false;           \
     }} while(0)
 
 /*
  * Assert {condition} is true, returning false from the current function and printing an error if it is false.
  */
-#define assertOrError(condition, error, ...)                                                              \
-    do {if(!(condition)) {                                                                                \
-         printf(ERROR " : " YELLOW "line %d" RESET " in " YELLOW __FILE__ RESET " : \n  " error "\n",    \
-                  __LINE__, ## __VA_ARGS__);                                                              \
-         return false;                                                                                    \
+#define assertOrError(condition, message, ...)   \
+    do {if(!(condition)) {                       \
+         error(message, ##__VA_ARGS__);          \
+         return false;                           \
     }} while(0)
 
 /*

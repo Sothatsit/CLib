@@ -27,17 +27,17 @@ bool test_strbuilder_getStringCopy() {
     StringBuilder builder = strbuilder_create(0);
     String builtString;
     {
-        strbuilder_appendCString(&builder, "Apple");
+        strbuilder_appendC(&builder, "Apple");
         strbuilder_appendChar(&builder, ' ');
-        strbuilder_appendCString(&builder, "pie");
+        strbuilder_appendC(&builder, "pie");
         strbuilder_appendChar(&builder, ' ');
-        strbuilder_appendCString(&builder, "is");
+        strbuilder_appendC(&builder, "is");
         strbuilder_appendChar(&builder, ' ');
-        strbuilder_appendCString(&builder, "super");
+        strbuilder_appendC(&builder, "super");
         strbuilder_appendChar(&builder, ' ');
-        strbuilder_appendCString(&builder, "nice");
+        strbuilder_appendC(&builder, "nice");
         strbuilder_appendChar(&builder, ' ');
-        strbuilder_appendCString(&builder, "man");
+        strbuilder_appendC(&builder, "man");
 
         builtString = strbuilder_getStringCopy(builder);
 
@@ -53,7 +53,7 @@ bool test_strbuilder_getStringCopy() {
 
 bool test_strbuilder_setCapacity() {
     StringBuilder builder = strbuilder_create(32);
-    strbuilder_appendCString(&builder, "Testing testing, 1, 2, 3");
+    strbuilder_appendC(&builder, "Testing testing, 1, 2, 3");
     {
         assert(builder.capacity == 32);
 
@@ -73,7 +73,7 @@ bool test_strbuilder_setCapacity() {
 
 bool test_strbuilder_ensureCapacity() {
     StringBuilder builder = strbuilder_create(32);
-    strbuilder_appendCString(&builder, "Testing testing, 1, 2, 3");
+    strbuilder_appendC(&builder, "Testing testing, 1, 2, 3");
     {
         assert(builder.capacity == 32);
 
@@ -93,14 +93,14 @@ bool test_strbuilder_ensureCapacity() {
 
 bool test_strbuilder_trimToLength() {
     StringBuilder builder = strbuilder_create(32);
-    strbuilder_appendCString(&builder, "Testing testing, 1, 2, 3");
+    strbuilder_appendC(&builder, "Testing testing, 1, 2, 3");
     {
         assert(builder.capacity == 32);
 
         assert(strbuilder_trimToLength(&builder));
         assert(builder.capacity == 24);
 
-        strbuilder_appendCString(&builder, "...");
+        strbuilder_appendC(&builder, "...");
 
         assert(strbuilder_trimToLength(&builder));
         assert(builder.capacity == 27);
@@ -133,16 +133,16 @@ bool test_strbuilder_appendChar() {
     return true;
 }
 
-bool test_strbuilder_appendString() {
+bool test_strbuilder_append() {
     String expected = str_create("Apple pie is super nice man");
     StringBuilder builder = strbuilder_create(0);
     {
-        strbuilder_appendString(&builder, str_create("Apple "));
-        strbuilder_appendString(&builder, str_create("pie "));
-        strbuilder_appendString(&builder, str_create("is "));
-        strbuilder_appendString(&builder, str_create("super "));
-        strbuilder_appendString(&builder, str_create("nice "));
-        strbuilder_appendString(&builder, str_create("man"));
+        strbuilder_append(&builder, str_create("Apple "));
+        strbuilder_append(&builder, str_create("pie "));
+        strbuilder_append(&builder, str_create("is "));
+        strbuilder_append(&builder, str_create("super "));
+        strbuilder_append(&builder, str_create("nice "));
+        strbuilder_append(&builder, str_create("man"));
 
         assert(str_equals(builder.string, expected));
     }
@@ -151,16 +151,16 @@ bool test_strbuilder_appendString() {
     return true;
 }
 
-bool test_strbuilder_appendCString() {
+bool test_strbuilder_appendC() {
     String expected = str_create("Apple pie is super nice man");
     StringBuilder builder = strbuilder_create(0);
     {
-        strbuilder_appendCString(&builder, "Apple ");
-        strbuilder_appendCString(&builder, "pie ");
-        strbuilder_appendCString(&builder, "is ");
-        strbuilder_appendCString(&builder, "super ");
-        strbuilder_appendCString(&builder, "nice ");
-        strbuilder_appendCString(&builder, "man");
+        strbuilder_appendC(&builder, "Apple ");
+        strbuilder_appendC(&builder, "pie ");
+        strbuilder_appendC(&builder, "is ");
+        strbuilder_appendC(&builder, "super ");
+        strbuilder_appendC(&builder, "nice ");
+        strbuilder_appendC(&builder, "man");
 
         assert(str_equals(builder.string, expected));
     }
@@ -202,7 +202,7 @@ void test_StringBuilder(int * failures, int * successes) {
     test(strbuilder_trimToLength);
 
     test(strbuilder_appendChar);
-    test(strbuilder_appendString);
-    test(strbuilder_appendCString);
+    test(strbuilder_append);
+    test(strbuilder_appendC);
     test(strbuilder_appendSubstring);
 }

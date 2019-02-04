@@ -55,9 +55,9 @@ bool test_StringBuilder_example() {
             String fruit = fruits[index];
 
             if(index != 0)
-                strbuilder_appendCString(&builder, ", ");
+                strbuilder_appendC(&builder, ", ");
 
-            strbuilder_appendString(&builder, fruit);
+            strbuilder_append(&builder, fruit);
         }
 
         // Print out the built String

@@ -48,9 +48,9 @@ for(u64 index = 0; index < numFruits; ++index) {
     String fruit = fruits[index];
 
     if(index != 0)
-        strbuilder_appendCString(&builder, ", ");
+        strbuilder_appendC(&builder, ", ");
 
-    strbuilder_appendString(&builder, fruit);
+    strbuilder_append(&builder, fruit);
 }
 
 // Print out the built String

@@ -611,6 +611,33 @@ bool test_str_replaceCStringInPlace() {
     return true;
 }
 
+bool test_str_reverse() {
+    String empty = str_createCopy("");
+    String single = str_createCopy("a");
+    String many = str_createCopy("abcdefghijklmnopqrstuvwxyz");
+    {
+        assertStrValid(single);
+        assertStrValid(many);
+
+        String emptyExpected = str_create("");
+        String singleExpected = str_create("a");
+        String manyExpected = str_create("zyxwvutsrqponmlkjihgfedcba");
+
+        str_reverse(empty);
+        str_reverse(single);
+        str_reverse(many);
+
+        assert(str_equals(empty, emptyExpected));
+        assert(str_equals(single, singleExpected));
+        assert(str_equals(many, manyExpected));
+    }
+    str_destroy(&empty);
+    str_destroy(&single);
+    str_destroy(&many);
+
+    return true;
+}
+
 bool test_str_concat() {
     String a = str_createCopy("Apple Pies & ");
     String b = str_createCopy("TV Remotes");
@@ -868,6 +895,7 @@ void test_String(int * failures, int * successes) {
     test(str_replaceCString);
     test(str_replaceStringInPlace);
     test(str_replaceCStringInPlace);
+    test(str_reverse);
     test(str_concat);
     test(str_substring);
     test(str_trim);

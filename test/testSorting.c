@@ -30,9 +30,9 @@ bool test_u64_sortCase(char * sortName, SortFn_u64 sortFn, u64 * source, u64 * e
     if(matchesExpected)
         return true;
 
-    char * sourceString = str_toCString(u64_arrayToString(source, length));
-    char * sortedString = str_toCString(u64_arrayToString(sorted, length));
-    char * expectedString = str_toCString(u64_arrayToString(expected, length));
+    char * sourceString = str_toCString(arr_u64_toString(source, length));
+    char * sortedString = str_toCString(arr_u64_toString(sorted, length));
+    char * expectedString = str_toCString(arr_u64_toString(expected, length));
 
     error("%s did not produce the expected output\n"
           BOLD "  Source:   " RESET "%s\n"
@@ -105,9 +105,7 @@ bool test_u64_mergeSort() {
 // Required to make u64_mergeSort_withBuffer conform to SortFn_u64.
 bool u64_mergeSort_withBuffer_curried(u64 * array, u64 length) {
     u64 buffer[length];
-
     u64_mergeSort_withBuffer(array, buffer, length);
-
     return true;
 }
 

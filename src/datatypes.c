@@ -500,7 +500,7 @@ String str_replaceString(String string, String find, String replacement) {
     while((index = str_indexOfStringAfterIndex(string, find, lastIndex)) != -1) {
         strbuilder_appendSubstring(&stringBuilder, string, lastIndex, (u64) index);
 
-        strbuilder_appendString(&stringBuilder, replacement);
+        strbuilder_append(&stringBuilder, replacement);
 
         lastIndex = (u64) index + find.length;
     }
@@ -572,6 +572,24 @@ String str_replaceStringInPlace(String string, String find, String replacement) 
 
 String str_replaceCStringInPlace(String string, char * find, char * replacement) {
     return str_replaceStringInPlace(string, str_create(find), str_create(replacement));
+}
+
+void str_reverse(String string) {
+    if(string.length <= 1)
+        return;
+
+    u64 fromStart = 0;
+    u64 fromEnd = string.length - 1;
+
+    while (fromStart < fromEnd) {
+        char startChar = str_get(string, fromStart);
+        char endChar = str_get(string, fromEnd);
+        str_set(string, fromStart, endChar);
+        str_set(string, fromEnd, startChar);
+
+        fromStart += 1;
+        fromEnd -= 1;
+    }
 }
 
 String str_concat(String string1, String string2) {
@@ -798,7 +816,7 @@ bool strbuilder_appendChar(StringBuilder * stringBuilder, char character) {
     return true;
 }
 
-bool strbuilder_appendString(StringBuilder * stringBuilder, String string) {
+bool strbuilder_append(StringBuilder * stringBuilder, String string) {
     u64 requiredCapacity = stringBuilder->string.length + string.length;
 
     if(!strbuilder_ensureCapacity(stringBuilder, requiredCapacity))
@@ -811,38 +829,129 @@ bool strbuilder_appendString(StringBuilder * stringBuilder, String string) {
     return true;
 }
 
-bool strbuilder_appendCString(StringBuilder * stringBuilder, char * string) {
-    return strbuilder_appendString(stringBuilder, str_create(string));
+bool strbuilder_appendC(StringBuilder * stringBuilder, char * string) {
+    return strbuilder_append(stringBuilder, str_create(string));
 }
 
 bool strbuilder_appendSubstring(StringBuilder * stringBuilder, String string, u64 start, u64 end) {
-    return strbuilder_appendString(stringBuilder, str_substring(string, start, end));
+    return strbuilder_append(stringBuilder, str_substring(string, start, end));
 }
 
 
 
 //
-// String Conversions
+// Arrays
 //
 
-String u64_arrayToString(u64 * array, u64 length) {
+typedef struct Array {
+    void * data;
+    u64 length;
+
+    void * (*get)(void *, u64);
+} Array;
+
+void * arr_u64_get(void * data, u64 index) {
+    return &((u64 *) data)[index];
+}
+
+Array arr_u64_create(u64 * data, u64 length) {
+    Array array;
+
+    array.data = data;
+    array.length = length;
+    array.get = &arr_u64_get;
+
+    return array;
+}
+
+typedef struct Iterator Iterator;
+
+struct Iterator {
+    void * (*next)(Iterator *);
+};
+
+typedef struct ArrayIterator {
+    Iterator iterator;
+
+    Array array;
+    u64 index;
+} ArrayIterator;
+
+void * arr_iterator_next(Iterator * iterator) {
+    ArrayIterator * arrayIterator = (ArrayIterator *) iterator;
+
+    if(arrayIterator->index + 1 >= arrayIterator->array.length)
+        return NULL;
+
+    arrayIterator->index += 1;
+
+    return (*arrayIterator->array.get)(arrayIterator->array.data, arrayIterator->index);
+}
+
+ArrayIterator arr_iterator(Array array) {
+    ArrayIterator iterator;
+
+    iterator.iterator.next = arr_iterator_next;
+    iterator.array = array;
+    iterator.index = 0;
+
+    return iterator;
+}
+
+typedef void (*StrBuilderAppendFn)(StringBuilder *, void *);
+
+void strbuilder_join(StringBuilder * builder,
+                     Iterator * iterator,
+                     StrBuilderAppendFn appendValue,
+                     String seperator) {
+
+    void * current = (*iterator->next)(iterator);
+
+    if(NULL == current)
+        return;
+
+    (*appendValue)(builder, current);
+
+    while(NULL != (current = (*iterator->next)(iterator))) {
+        strbuilder_append(builder, seperator);
+
+        (*appendValue)(builder, current);
+    }
+}
+
+String arr_join(Iterator * iterator, StrBuilderAppendFn appendValue, String seperator) {
     StringBuilder builder = strbuilder_create(32);
 
-    strbuilder_appendCString(&builder, "[");
-
-    for(u64 index = 0; index < length; ++index) {
-        if(index != 0) {
-            strbuilder_appendCString(&builder, ", ");
-        }
-
-        String number = str_format("%lld", array[index]);
-
-        strbuilder_appendString(&builder, number);
-    }
-
-    strbuilder_appendCString(&builder, "]");
+    strbuilder_join(&builder, iterator, appendValue, seperator);
 
     return builder.string;
+}
+
+String arr_toString(Iterator * iterator, StrBuilderAppendFn appendValue) {
+    StringBuilder builder = strbuilder_create(32);
+
+    strbuilder_appendC(&builder, "[");
+
+    strbuilder_join(&builder, iterator, appendValue, str_create(", "));
+
+    strbuilder_appendC(&builder, "]");
+
+    return builder.string;
+}
+
+void strbuilder_u64_toString(StringBuilder * builder, void * number) {
+    String string = str_format("%llu", *((u64 *) number));
+
+    strbuilder_append(builder, string);
+
+    str_destroy(&string);
+}
+
+String arr_u64_toString(u64 * data, u64 length) {
+    Array array = arr_u64_create(data, length);
+    ArrayIterator iterator = arr_iterator(array);
+
+    return arr_toString(&iterator.iterator, &strbuilder_u64_toString);
 }
 
 

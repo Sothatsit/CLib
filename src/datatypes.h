@@ -422,6 +422,13 @@ String str_replaceStringInPlace(String string, String find, String replacement);
 String str_replaceCStringInPlace(String string, char * find, char * replacement);
 
 /*!
+ * Reverse the characters in {string} in place.
+ *
+ * Will return an empty String on failure.
+ */
+void str_reverse(String string);
+
+/*!
  * Concatenate {string1} and {string2} into a new String.
  *
  * str_destroy should be used on the returned String when it is no longer being used.
@@ -598,14 +605,14 @@ bool strbuilder_appendChar(StringBuilder * stringBuilder, char character);
  *
  * Returns whether appending {string} was successful.
  */
-bool strbuilder_appendString(StringBuilder * stringBuilder, String string);
+bool strbuilder_append(StringBuilder * stringBuilder, String string);
 
 /*!
  * Will append {string} to {stringBuilder}.
  *
  * Returns whether appending {string} was successful.
  */
-bool strbuilder_appendCString(StringBuilder * stringBuilder, char * string);
+bool strbuilder_appendC(StringBuilder * stringBuilder, char * string);
 
 /*!
  * Will append a substring of {string} between {start} and {end} to {stringBuilder}.
@@ -621,7 +628,7 @@ bool strbuilder_appendSubstring(StringBuilder * stringBuilder, String string, u6
 /*!
  *
  */
-String u64_arrayToString(u64 * array, u64 length);
+String arr_u64_toString(u64 * array, u64 length);
 
 
 

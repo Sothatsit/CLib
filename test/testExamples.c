@@ -8,6 +8,7 @@
  * In README under Features -> String
  */
 bool test_String_example() {
+    // TODO : Update the README
     char * name = "CLib";
     int version = 1;
     char * url = "https://github.com/Sothatsit/CLib";
@@ -19,11 +20,11 @@ bool test_String_example() {
         // Print out each key value pair in contrived
         String keyValue;
         String remaining = contrived;
-        while(!str_isEmpty(remaining)) {
+        while(str_isValid(remaining)) {
             keyValue = str_splitAtCString(&remaining, ", ");
 
             // Print out the result
-            // printf("%s\n", str_toCString(keyValue));
+            // printf("%s\n", str_c(keyValue));
         }
 
         // Destroy the String
@@ -61,7 +62,7 @@ bool test_StringBuilder_example() {
         }
 
         // Print out the built String
-        // printf("Fruits: [%s]\n", str_toCString(builder.string));
+        // printf("Fruits: [%s]\n", str_c(builder.string));
 
         // Destroy the StringBuilder
         strbuilder_destroy(&builder);

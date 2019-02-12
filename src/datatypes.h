@@ -33,7 +33,28 @@ typedef uint64_t u64;
 typedef int8_t  s8;
 typedef int16_t s16;
 typedef int32_t s32;
-typedef int32_t s64;
+typedef int64_t s64;
+
+#define S8_MIN INT8_MIN
+#define S16_MIN INT16_MIN
+#define S32_MIN INT32_MIN
+#define S64_MIN INT64_MIN
+
+#define S8_MAX INT8_MAX
+#define S16_MAX INT16_MAX
+#define S32_MAX INT32_MAX
+#define S64_MAX INT64_MAX
+
+#define U8_MIN 0
+#define U16_MIN 0
+#define U32_MIN 0
+#define U64_MIN 0
+
+#define U8_MAX UINT8_MAX
+#define U16_MAX UINT16_MAX
+#define U32_MAX UINT32_MAX
+#define U64_MAX UINT64_MAX
+
 
 /*!
  * Get the maximum of {num1} and {num2}.
@@ -46,24 +67,80 @@ typedef int32_t s64;
 #define min(num1, num2) (num1 < num2 ? num1 : num2)
 
 /*!
+ * Returns whether it is safe to cast {num} from s64 to size_t.
+ */
+bool can_cast_s64_to_sizet(s64 num);
+
+/*!
+ * Returns whether it is safe to cast {num} from size_t to s64.
+ */
+bool can_cast_sizet_to_s64(size_t num);
+
+/*!
+ * Returns whether it is safe to cast {num} from long to s64.
+ */
+bool can_cast_long_to_s64(long num);
+
+/*!
+ * Returns whether it is safe to cast {num} from s64 to long.
+ */
+bool can_cast_s64_to_long(s64 num);
+
+/*!
  * Find the next power of 2 greater than or equal to {number}.
+ *
+ * If the next power of 2 will overflow u8, 0 will be returned.
  */
 u8 u8_nextPowerOf2(u8 number);
 
 /*!
  * Find the next power of 2 greater than or equal to {number}.
+ *
+ * If the next power of 2 will overflow u16, 0 will be returned.
  */
 u16 u16_nextPowerOf2(u16 number);
 
 /*!
  * Find the next power of 2 greater than or equal to {number}.
+ *
+ * If the next power of 2 will overflow u32, 0 will be returned.
  */
 u32 u32_nextPowerOf2(u32 number);
 
 /*!
  * Find the next power of 2 greater than or equal to {number}.
+ *
+ * If the next power of 2 will overflow u64, 0 will be returned.
  */
 u64 u64_nextPowerOf2(u64 number);
+
+/*!
+ * Find the next power of 2 greater than or equal to {number}.
+ *
+ * If the next power of 2 will overflow s8, 0 will be returned.
+ */
+s8 s8_nextPowerOf2(s8 number);
+
+/*!
+ * Find the next power of 2 greater than or equal to {number}.
+ *
+ * If the next power of 2 will overflow s16, 0 will be returned.
+ */
+s16 s16_nextPowerOf2(s16 number);
+
+/*!
+ * Find the next power of 2 greater than or equal to {number}.
+ *
+ * If the next power of 2 will overflow s32, 0 will be returned.
+ */
+s32 s32_nextPowerOf2(s32 number);
+
+/*!
+ * Find the next power of 2 greater than or equal to {number}.
+ *
+ * If the next power of 2 will overflow s64, 0 will be returned.
+ */
+s64 s64_nextPowerOf2(s64 number);
 
 
 
@@ -179,7 +256,7 @@ typedef struct String {
     /*!
      * The length, in chars, of the blob of data.
      */
-    u64 length;
+    s64 length;
 } String;
 
 /*!
@@ -209,7 +286,7 @@ String str_createCopy(char * data);
  * str_destroy may be used on the returned String and will free {data}.
  * str_destroy should not be used on this String if {data} should not be freed.
  */
-String str_createOfLength(char * data, u64 length);
+String str_createOfLength(char * data, s64 length);
 
 /*!
  * Create a String from the characters in {data} with the length {length}, copying {data} instead of using it.
@@ -217,14 +294,19 @@ String str_createOfLength(char * data, u64 length);
  * str_destroy may be used on the returned String and will free {data}.
  * str_destroy should not be used on this String if {data} should not be freed.
  */
-String str_createCopyOfLength(char * data, u64 length);
+String str_createCopyOfLength(char * data, s64 length);
 
 /*!
  * Create a String filled with uninitialised data of length {length}.
  *
  * str_destroy should be used on the returned String when it is no longer being used.
  */
-String str_createUninitialised(u64 length);
+String str_createUninitialised(s64 length);
+
+/*!
+ * Returns a String with length -1.
+ */
+String str_createInvalid();
 
 /*!
  * Returns a String with length 0.
@@ -235,6 +317,16 @@ String str_createEmpty();
  * Returns whether {string} is empty.
  */
 bool str_isEmpty(String string);
+
+/*!
+ * Returns whether {string} is a valid string.
+ */
+bool str_isValid(String string);
+
+/*!
+ * Returns whether {string} is an invalid string.
+ */
+bool str_isInvalid(String string);
 
 /*!
  * Destroy {string}.
@@ -251,6 +343,11 @@ void str_destroy(String * string);
  * Creates a null terminated version of {string}.
  *
  * The returned null terminated string should be freed.
+ */
+char * str_c(String string);
+
+/*!
+ * An alias of str_c.
  */
 char * str_toCString(String string);
 
@@ -295,7 +392,7 @@ bool str_endsWith(String string, String suffix);
  *
  * If {index} is out of the bounds of {string}, the null character will be returned.
  */
-char str_get(String string, u64 index);
+char str_get(String string, s64 index);
 
 /*!
  * Find the index of the first occurence of {find} in {string}. Will return -1 if {find} is not found.
@@ -316,16 +413,14 @@ s64 str_indexOfString(String string, String find);
  *
  * Will return -1 if {find} is not found after or at {index}.
  */
-s64 str_indexOfCharAfterIndex(String string, char find, u64 index);
+s64 str_indexOfCharAfterIndex(String string, char find, s64 index);
 
 /*!
  * Find the index of the first occurence of {find} after or at {index} in {string}.
  *
- * If {find} is empty will return {index} + 1 unless {string} is also empty, in which case it will return -1.
- *
- * Will return -1 if {find} is not found after or at {index}.
+ * Will return -1 if {find} is not found after or at {index}, or if {find} is empty.
  */
-s64 str_indexOfStringAfterIndex(String string, String find, u64 index);
+s64 str_indexOfStringAfterIndex(String string, String find, s64 index);
 
 /*!
  * Find the index of the last occurence of {find} in {string}. Will return -1 if {find} is not found.
@@ -364,9 +459,9 @@ void str_toLowercase(String string);
 /*!
  * Set the character at {index} in {string} to {character}.
  *
- * Returns true if {index} is within the bounds of {string} and the character is set.
+ * Returns true if {index} is within the bounds of {string} and the character was set.
  */
-bool str_set(String string, u64 index, char character);
+bool str_set(String string, s64 index, char character);
 
 /*!
  * Set the characters in {string} at {index} to the characters in {replacement}.
@@ -376,7 +471,7 @@ bool str_set(String string, u64 index, char character);
  * Will perform a bounds check to ensure that {replacement} will fit completely into {string}.
  * Returns whether the operation was successful.
  */
-bool str_setChars(String string, u64 index, String replacement);
+bool str_setChars(String string, s64 index, String replacement);
 
 /*!
  * Replace all occurences of {find} in {string} with {replacement}.
@@ -448,7 +543,7 @@ String str_concat(String string1, String string2);
  * As the returned String uses the data from {string}, if {string} is destroyed the returned
  * String will be invalid. Use str_copy on the returned String if this is unwanted.
  */
-String str_substring(String string, u64 start, u64 end);
+String str_substring(String string, s64 start, s64 end);
 
 /*!
  * Get a substring of {string} with the leading and trailing whitespace omitted.
@@ -483,7 +578,7 @@ String str_trimTrailing(String string);
  *
  * If {index} is -1, {remaining} will be returned and {remaining} will be set to an empty String.
  */
-String str_splitAt(String * remaining, s64 index, u64 delimiterLength);
+String str_splitAt(String * remaining, s64 index, s64 delimiterLength);
 
 /*!
  * Returns a substring of {remaining} from its start to the first occurence of {find}.
@@ -549,7 +644,7 @@ typedef struct StringBuilder {
     /*!
      * The current capacity that the StringBuilder can hold before it has to expand.
      */
-    u64 capacity;
+    s64 capacity;
 } StringBuilder;
 
 /*!
@@ -557,67 +652,77 @@ typedef struct StringBuilder {
  *
  * Will return a StringBuilder with capacity 0 on error or if {initialSize} is 0.
  */
-StringBuilder strbuilder_create(u64 initialSize);
+StringBuilder strbuilder_create(s64 initialSize);
 
 /*!
- * Destroy {stringBuilder}.
+ * Creates a StringBuilder that is in an errored state.
+ */
+StringBuilder strbuilder_createInvalid();
+
+/*!
+ * Returns whether {builder} is in an errored state.
+ */
+bool strbuilder_isInvalid(StringBuilder builder);
+
+/*!
+ * Destroy {builder}.
  *
- * As {stringBuilder}->string and {stringBuilder} share the same data, only one of these should be destroyed.
+ * As {builder}->string and {builder} share the same data, only one of these should be destroyed.
  */
-void strbuilder_destroy(StringBuilder * stringBuilder);
+void strbuilder_destroy(StringBuilder * builder);
 
 /*!
- * Returns a copy of the String in {stringBuilder}.
+ * Returns a copy of the String in {builder}.
  */
-String strbuilder_getStringCopy(StringBuilder stringBuilder);
+String strbuilder_getStringCopy(StringBuilder builder);
 
 /*!
- * Sets the capacity of {stringBuilder} to {capacity}.
+ * Sets the capacity of {builder} to {capacity}.
  *
  * Returns whether setting the capacity was successful.
  */
-bool strbuilder_setCapacity(StringBuilder * stringBuilder, u64 capacity);
+bool strbuilder_setCapacity(StringBuilder * builder, s64 capacity);
 
 /*!
- * If {requiredCapacity} is greater than the current capacity of {stringBuilder}, the
- * capacity of {stringBuilder} will be attempted to be increased to the next power of 2.
+ * If {requiredCapacity} is greater than the current capacity of {builder}, the
+ * capacity of {builder} will be attempted to be increased to the next power of 2.
  *
- * Returns whether it was able to ensure that {stringBuilder} has a capacity of at least {requiredCapacity}.
+ * Returns whether it was able to ensure that {builder} has a capacity of at least {requiredCapacity}.
  */
-bool strbuilder_ensureCapacity(StringBuilder * stringBuilder, u64 requiredCapacity);
+bool strbuilder_ensureCapacity(StringBuilder * builder, s64 requiredCapacity);
 
 /*!
- * Attempts to reduce the capacity of {stringBuilder} so it is equal to the length of its contents.
+ * Attempts to reduce the capacity of {builder} so it is equal to the length of its contents.
  *
  * Returns whether reducing the capacity to its length was successful.
  */
-bool strbuilder_trimToLength(StringBuilder * stringBuilder);
+bool strbuilder_trimToLength(StringBuilder * builder);
 
 /*!
- * Will append {character} to {stringBuilder}.
+ * Will append {character} to {builder}.
  *
  * Returns whether appending {character} was succesful.
  */
-bool strbuilder_appendChar(StringBuilder * stringBuilder, char character);
+bool strbuilder_appendChar(StringBuilder * builder, char character);
 
 /*!
- * Will append {string} to {stringBuilder}.
+ * Will append {string} to {builder}.
  *
  * Returns whether appending {string} was successful.
  */
-bool strbuilder_append(StringBuilder * stringBuilder, String string);
+bool strbuilder_append(StringBuilder * builder, String string);
 
 /*!
- * Will append {string} to {stringBuilder}.
+ * Will append {string} to {builder}.
  *
  * Returns whether appending {string} was successful.
  */
-bool strbuilder_appendC(StringBuilder * stringBuilder, char * string);
+bool strbuilder_appendC(StringBuilder * builder, char * string);
 
 /*!
- * Will append a substring of {string} between {start} and {end} to {stringBuilder}.
+ * Will append a substring of {string} between {start} and {end} to {builder}.
  */
-bool strbuilder_appendSubstring(StringBuilder * stringBuilder, String string, u64 start, u64 end);
+bool strbuilder_appendSubstring(StringBuilder * builder, String string, s64 start, s64 end);
 
 
 
@@ -626,9 +731,9 @@ bool strbuilder_appendSubstring(StringBuilder * stringBuilder, String string, u6
 //
 
 /*!
- *
+ * Convert a u64 array into a String.
  */
-String arr_u64_toString(u64 * array, u64 length);
+String arr_u64_toString(u64 * array, s64 length);
 
 
 
@@ -698,7 +803,7 @@ typedef struct Buffer {
     /*!
      * The capacity in chars of the buffer.
      */
-    u64 capacity;
+    s64 capacity;
 } Buffer;
 
 /*!
@@ -706,19 +811,39 @@ typedef struct Buffer {
  *
  * Will return an empty Buffer on error or if {capacity} is 0.
  */
-Buffer buffer_create(u64 capacity);
+Buffer buffer_create(s64 capacity);
+
+/*!
+ * Create an empty Buffer.
+ */
+Buffer buffer_createEmpty();
+
+/*!
+ * Create a Buffer in an errored state.
+ */
+Buffer buffer_createInvalid();
 
 /*!
  * Create a new Buffer using the data at {start} with capacity {capacity}.
  *
  * Will return an empty Buffer if {start} is NULL or if {capacity} is 0.
  */
-Buffer buffer_createUsing(char * start, u64 capacity);
+Buffer buffer_createUsing(char * start, s64 capacity);
 
 /*!
- * Create an empty Buffer.
+ * Check whether {buffer} is empty.
  */
-Buffer buffer_createEmpty();
+bool buffer_isEmpty(Buffer buffer);
+
+/*!
+ * Check whether {buffer} is usable and not in an errored state.
+ */
+bool buffer_isValid(Buffer buffer);
+
+/*!
+ * Check whether {buffer} is in an errored state.
+ */
+bool buffer_isInvalid(Buffer buffer);
 
 /*!
  * Create a copy of {buffer}.
@@ -737,11 +862,6 @@ Buffer buffer_copy(Buffer buffer);
 bool buffer_copyInto(Buffer from, Buffer to);
 
 /*!
- * Check whether {buffer} is empty.
- */
-bool buffer_isEmpty(Buffer buffer);
-
-/*!
  * Destroy {buffer} and free its contents.
  */
 void buffer_destroy(Buffer * buffer);
@@ -751,7 +871,7 @@ void buffer_destroy(Buffer * buffer);
  *
  * Returns whether setting the capacity was successful.
  */
-bool buffer_setCapacity(Buffer * buffer, u64 capacity);
+bool buffer_setCapacity(Buffer * buffer, s64 capacity);
 
 /*!
  * If {requiredCapacity} is greater than the current capacity of {buffer}, the
@@ -759,7 +879,7 @@ bool buffer_setCapacity(Buffer * buffer, u64 capacity);
  *
  * Returns whether it was able to ensure that {buffer} has a capacity of at least {requiredCapacity}.
  */
-bool buffer_ensureCapacity(Buffer * buffer, u64 requiredCapacity);
+bool buffer_ensureCapacity(Buffer * buffer, s64 requiredCapacity);
 
 /*!
  * Check that the contents of the buffers {buffer1} and {buffer2} are the same.
@@ -786,7 +906,7 @@ typedef struct Stack {
     /*!
      * The number of chars currently being used in the buffer.
      */
-    u64 used;
+    s64 used;
 } Stack;
 
 /*!
@@ -794,7 +914,7 @@ typedef struct Stack {
  *
  * Will return a Stack with capacity 0 on error or if {initialCapacity} is 0.
  */
-Stack stack_create(u64 initialCapacity);
+Stack stack_create(s64 initialCapacity);
 
 /*!
  * Check whether the underlying Buffer of {stack} is empty.
@@ -813,7 +933,7 @@ void stack_destroy(Stack * stack);
  *
  * Returns whether setting the capacity was successful.
  */
-bool stack_setCapacity(Stack * stack, u64 capacity);
+bool stack_setCapacity(Stack * stack, s64 capacity);
 
 /*!
  * If {requiredCapacity} is greater than the current capacity of {stack}, the
@@ -821,7 +941,7 @@ bool stack_setCapacity(Stack * stack, u64 capacity);
  *
  * Returns whether it was able to ensure that {stack} has a capacity of at least {requiredCapacity}.
  */
-bool stack_ensureCapacity(Stack * stack, u64 requiredCapacity);
+bool stack_ensureCapacity(Stack * stack, s64 requiredCapacity);
 
 /*!
  * Attempts to reduce the capacity of {stack} so it is equal to {stack->used}.
@@ -848,7 +968,7 @@ bool stack_trimToUsed(Stack * stack);
  *
  * Will return NULL if it is unable to reserve {length} chars.
  */
-char * stack_reserve(Stack * stack, u64 length);
+char * stack_reserve(Stack * stack, s64 length);
 
 /*!
  * Append {length} chars from {data} to {stack}.
@@ -857,7 +977,7 @@ char * stack_reserve(Stack * stack, u64 length);
  *
  * Will return NULL if it is unable to append {data}.
  */
-char * stack_appendData(Stack * stack, char * data, u64 length);
+char * stack_appendData(Stack * stack, char * data, s64 length);
 
 /*!
  * Define functions to modify a Stack which contains data of type {type}.
@@ -883,17 +1003,17 @@ char * stack_appendData(Stack * stack, char * data, u64 length);
  * initial capacity {initialCapacity} elements of type {type}.
  *
  * The signature of the function is:
- *    static Stack * stack_createOf{type}(u64 initialCapacity)
+ *    static Stack * stack_createOf{type}(s64 initialCapacity)
  *
  * e.g. For Buffer
- *    static Stack * stack_createOfBuffer(u64 initialCapacity)
+ *    static Stack * stack_createOfBuffer(s64 initialCapacity)
  *
  * Creates a new Stack with an inital capacity of {intialCapacity} elements of type {type}.
  *
  * Will return a Stack with capacity 0 on error or if {intialCapacity} is 0.
  */
 #define stack_defineTypedCreate(type)                          \
-    static Stack stack_createOf##type(u64 initialCapacity) {   \
+    static Stack stack_createOf##type(s64 initialCapacity) {   \
         return stack_create(initialCapacity * sizeof(type));   \
     }
 
@@ -927,17 +1047,17 @@ char * stack_appendData(Stack * stack, char * data, u64 length);
  * Define a function to append {count} values from {data} of type {type} to {stack}.
  *
  * The signature of the function is:
- *    static {type} * stack_appendMany{type}(Stack * stack, {type} * data, u64 count)
+ *    static {type} * stack_appendMany{type}(Stack * stack, {type} * data, s64 count)
  *
  * e.g. For Buffer
- *    static Buffer * stack_appendManyBuffer(Stack * stack, Buffer * data, u64 count)
+ *    static Buffer * stack_appendManyBuffer(Stack * stack, Buffer * data, s64 count)
  *
  * Returns a pointer to the bottom most appended element.
  *
  * Will return NULL if it is unable to append the values.
  */
 #define stack_defineTypedAppendMany(type)                                               \
-    static type * stack_appendMany##type(Stack * stack, type * data, u64 count) {       \
+    static type * stack_appendMany##type(Stack * stack, type * data, s64 count) {       \
         return (type *) stack_appendData(stack, (char *) data, count * sizeof(type));   \
     }
 
@@ -963,17 +1083,17 @@ char * stack_appendData(Stack * stack, char * data, u64 length);
  * Define a function to pop {count} values of type {type} from {stack}.
  *
  * The signature of the function is:
- *    static {type} * stack_popMany{type}(Stack * stack, u64 count)
+ *    static {type} * stack_popMany{type}(Stack * stack, s64 count)
  *
  * e.g. For Buffer
- *    static Buffer * stack_popManyBuffer(Stack * stack, u64 count)
+ *    static Buffer * stack_popManyBuffer(Stack * stack, s64 count)
  *
  * Returns a pointer to the bottom-most element that was popped from {stack}.
  *
  * Will return NULL if there are not {count} values on {stack}.
  */
 #define stack_defineTypedPopMany(type)                              \
-    static type * stack_popMany##type(Stack * stack, u64 count) {   \
+    static type * stack_popMany##type(Stack * stack, s64 count) {   \
         if(stack->used < count * sizeof(type))                      \
             return NULL;                                            \
                                                                     \

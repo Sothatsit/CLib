@@ -38,13 +38,13 @@ bool test_stack_create() {
 
 bool test_stack_isValid() {
     Stack stack = stack_create(32);
-    Stack empty = stack_create(0);
+    Stack invalid = stack_create(-1);
     {
         assert(stack_isValid(stack));
-        assert(!stack_isValid(empty));
+        assert(!stack_isValid(invalid));
     }
     stack_destroy(&stack);
-    stack_destroy(&empty);
+    stack_destroy(&invalid);
 
     return true;
 }

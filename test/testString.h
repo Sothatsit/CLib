@@ -4,10 +4,10 @@
 /*
  * Assert {string} is not empty and contains data.
  */
-#define assertStrValid(string)                                                    \
-    do {                                                                          \
-        assertOrError(!str_isEmpty(string), #string " is unexpectedly empty");    \
-        assertNonNull(string.data);                                               \
+#define assertStrValid(string)                                                     \
+    do {                                                                           \
+        assertOrError(str_isValid(string), #string " is unexpectedly invalid");    \
+        assertNonNull(string.data);                                                \
     } while(0)
 
 /*

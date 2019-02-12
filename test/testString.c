@@ -118,9 +118,9 @@ bool test_str_destroy() {
     return true;
 }
 
-bool test_str_toCString() {
+bool test_str_c() {
     String johnDoe = str_createCopy("John Doe");
-    char * nullTerminated = str_toCString(johnDoe);
+    char * nullTerminated = str_c(johnDoe);
     {
         assertStrValid(johnDoe);
 
@@ -347,7 +347,7 @@ bool test_str_indexOfStringAfterIndex() {
         assert(str_indexOfStringAfterIndex(names, littleFinger, 1) == 19);
         assert(str_indexOfStringAfterIndex(names, arya, 15) == 46);
 
-        assert(str_indexOfStringAfterIndex(names, str_createEmpty(), 5) == 6);
+        assert(str_indexOfStringAfterIndex(names, str_createEmpty(), 5) == -1);
     }
     str_destroy(&names);
     str_destroy(&littleFinger);
@@ -867,7 +867,7 @@ void test_String(int * failures, int * successes) {
     test(str_isEmpty);
     test(str_destroy);
 
-    test(str_toCString);
+    test(str_c);
     test(str_format);
     test(str_vformat);
     test(str_copy);

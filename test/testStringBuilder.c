@@ -11,7 +11,7 @@ bool test_strbuilder_create() {
     StringBuilder builder = strbuilder_create(32);
     {
         assert(builder.capacity == 32);
-        assert(str_isEmpty(builder.string));
+        assert(builder.string.length == 0);
     }
     strbuilder_destroy(&builder);
 

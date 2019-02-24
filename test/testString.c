@@ -741,8 +741,8 @@ bool test_str_splitAt() {
         assertStrValid(expectedSecond);
 
         String third = originalString;
-        String first = str_splitAt(&third, 12, 2);
-        String second = str_splitAt(&third, 6, 9);
+        String first = str_split(&third, 12, 2);
+        String second = str_split(&third, 6, 9);
 
         assertStrValid(first);
         assertStrValid(second);
@@ -770,8 +770,8 @@ bool test_str_splitAtChar() {
         assertStrValid(expectedSecond);
 
         String third = originalString;
-        String first = str_splitAtChar(&third, ',');
-        String second = str_splitAtChar(&third, ',');
+        String first = str_splitCh(&third, ',');
+        String second = str_splitCh(&third, ',');
 
         assertStrValid(first);
         assertStrValid(second);
@@ -801,8 +801,8 @@ bool test_str_splitAtString() {
         assertStrValid(expectedSecond);
 
         String third = originalString;
-        String first = str_splitAtString(&third, delimiter);
-        String second = str_splitAtString(&third, delimiter);
+        String first = str_splitStr(&third, delimiter);
+        String second = str_splitStr(&third, delimiter);
 
         assertStrValid(first);
         assertStrValid(second);
@@ -832,8 +832,8 @@ bool test_str_splitAtCString() {
         assertStrValid(expectedSecond);
 
         String third = originalString;
-        String first = str_splitAtCString(&third, ", ");
-        String second = str_splitAtCString(&third, ", ");
+        String first = str_splitC(&third, ", ");
+        String second = str_splitC(&third, ", ");
 
         assertStrValid(first);
         assertStrValid(second);

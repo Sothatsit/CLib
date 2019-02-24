@@ -22,6 +22,44 @@
 
 
 //
+// Error Types
+//
+
+/*!
+ * Errors during the use of CLib.
+ */
+typedef enum {
+
+    ERROR_SUCCESS,
+
+    ERROR_FREED,
+    ERROR_STRING_EXHAUSTED,
+
+    ERROR_ARG_NULL,
+    ERROR_ARG_INVALID,
+    ERROR_NEG_LENGTH,
+    ERROR_ALLOC,
+    ERROR_FORMAT,
+    ERROR_CAST,
+
+    ERROR_FILE_OPEN,
+    ERROR_FILE_SEEK,
+    ERROR_FILE_TELL,
+    ERROR_FILE_READ,
+    ERROR_FILE_CLOSE,
+
+    ERROR_COUNT
+
+} CLibErrorType;
+
+/*!
+ * Strings describing each CLibErrorType.
+ */
+extern char * CLibErrorTypeStrings[ERROR_COUNT];
+
+
+
+//
 // Numbers
 //
 
@@ -75,6 +113,16 @@ bool can_cast_s64_to_sizet(s64 num);
  * Returns whether it is safe to cast {num} from size_t to s64.
  */
 bool can_cast_sizet_to_s64(size_t num);
+
+/*!
+ * Returns whether it is safe to cast {num} from s64 to u64.
+ */
+bool can_cast_s64_to_u64(s64 num);
+
+/*!
+ * Returns whether it is safe to cast {num} from u64 to s64.
+ */
+bool can_cast_u64_to_s64(u64 num);
 
 /*!
  * Returns whether it is safe to cast {num} from long to s64.
@@ -260,6 +308,13 @@ typedef struct String {
 } String;
 
 /*!
+ * Create a copy of {string}.
+ *
+ * str_destroy should be used on the returned String when it is no longer being used.
+ */
+String str_copy(String string);
+
+/*!
  * Create a String from the C string {data}.
  *
  * This will use the characters in {data}, if {data} is freed the returned String
@@ -304,9 +359,9 @@ String str_createCopyOfLength(char * data, s64 length);
 String str_createUninitialised(s64 length);
 
 /*!
- * Returns a String with length -1.
+ * Returns a String that represents an error.
  */
-String str_createInvalid();
+String str_createErrored(CLibErrorType errorType, int errnum);
 
 /*!
  * Returns a String with length 0.
@@ -324,9 +379,14 @@ bool str_isEmpty(String string);
 bool str_isValid(String string);
 
 /*!
- * Returns whether {string} is an invalid string.
+ * Returns whether {string} is errored.
  */
-bool str_isInvalid(String string);
+bool str_isErrored(String string);
+
+/*!
+ * Returns a String containing the reason for the errored String {string}.
+ */
+String str_getErrorReason(String string);
 
 /*!
  * Destroy {string}.
@@ -366,13 +426,6 @@ String str_format(char * format, ...);
 String str_vformat(char * format, va_list arguments);
 
 /*!
- * Create a copy of {string}.
- *
- * str_destroy should be used on the returned String when it is no longer being used.
- */
-String str_copy(String string);
-
-/*!
  * Check if {string1} and {string2} contain the same data.
  */
 bool str_equals(String string1, String string2);
@@ -405,6 +458,7 @@ s64 str_indexOfChar(String string, char find);
  * If {find} is empty will return 1 unless {string} is also empty, in which case it will return -1.
  *
  * Will return -1 if {find} is not found.
+ * Will return -2 on error.
  */
 s64 str_indexOfString(String string, String find);
 
@@ -412,6 +466,7 @@ s64 str_indexOfString(String string, String find);
  * Find the index of the first occurence of {find} after or at {index} in {string}.
  *
  * Will return -1 if {find} is not found after or at {index}.
+ * Will return -2 on error.
  */
 s64 str_indexOfCharAfterIndex(String string, char find, s64 index);
 
@@ -419,16 +474,23 @@ s64 str_indexOfCharAfterIndex(String string, char find, s64 index);
  * Find the index of the first occurence of {find} after or at {index} in {string}.
  *
  * Will return -1 if {find} is not found after or at {index}, or if {find} is empty.
+ * Will return -2 on error.
  */
 s64 str_indexOfStringAfterIndex(String string, String find, s64 index);
 
 /*!
- * Find the index of the last occurence of {find} in {string}. Will return -1 if {find} is not found.
+ * Find the index of the last occurence of {find} in {string}.
+ *
+ * Will return -1 if {find} is not found.
+ * Will return -2 on error.
  */
 s64 str_lastIndexOfChar(String string, char find);
 
 /*!
- * Find the index of the last occurence of {find} in {string}. Will return -1 if {find} is not found.
+ * Find the index of the last occurence of {find} in {string}.
+ *
+ * Will return -1 if {find} is not found.
+ * Will return -2 on error.
  */
 s64 str_lastIndexOfString(String string, String find);
 
@@ -461,7 +523,7 @@ void str_toLowercase(String string);
  *
  * Returns true if {index} is within the bounds of {string} and the character was set.
  */
-bool str_set(String string, s64 index, char character);
+CLibErrorType str_set(String string, s64 index, char character);
 
 /*!
  * Set the characters in {string} at {index} to the characters in {replacement}.
@@ -471,7 +533,7 @@ bool str_set(String string, s64 index, char character);
  * Will perform a bounds check to ensure that {replacement} will fit completely into {string}.
  * Returns whether the operation was successful.
  */
-bool str_setChars(String string, s64 index, String replacement);
+CLibErrorType str_setChars(String string, s64 index, String replacement);
 
 /*!
  * Replace all occurences of {find} in {string} with {replacement}.
@@ -578,7 +640,7 @@ String str_trimTrailing(String string);
  *
  * If {index} is -1, {remaining} will be returned and {remaining} will be set to an empty String.
  */
-String str_splitAt(String * remaining, s64 index, s64 delimiterLength);
+String str_split(String * remaining, s64 index, s64 delimiterLength);
 
 /*!
  * Returns a substring of {remaining} from its start to the first occurence of {find}.
@@ -587,7 +649,7 @@ String str_splitAt(String * remaining, s64 index, s64 delimiterLength);
  * If {find} is not found, {remaining} will be returned and {remaining} will be set to an empty String.
  * Therefore, if {remaining} is empty, there are no more occurences of {find} in the String.
  */
-String str_splitAtChar(String *remaining, char delimiter);
+String str_splitCh(String *remaining, char delimiter);
 
 /*!
  * Returns a substring of {remaining} from its start to the first occurence of {delimiter}.
@@ -596,7 +658,7 @@ String str_splitAtChar(String *remaining, char delimiter);
  * If {delimiter} is not found, {remaining} will be returned and {remaining} will be set to an empty String.
  * Therefore, if {remaining} is empty, there are no more occurences of {delimiter} in the String.
  */
-String str_splitAtString(String *remaining, String delimiter);
+String str_splitStr(String *remaining, String delimiter);
 
 /*!
  * Returns a substring of {remaining} from its start to the first occurence of {delimiter}.
@@ -605,7 +667,7 @@ String str_splitAtString(String *remaining, String delimiter);
  * If {delimiter} is not found, {remaining} will be returned and {remaining} will be set to an empty String.
  * Therefore, if {remaining} is empty, there are no more occurences of {delimiter} in the String.
  */
-String str_splitAtCString(String * remaining, char * delimiter);
+String str_splitC(String * remaining, char * delimiter);
 
 
 
@@ -1102,4 +1164,39 @@ char * stack_appendData(Stack * stack, char * data, s64 length);
         return (type *) stack_getEnd(*stack);                       \
     }
 
+
+
+//
+// Errors
+//
+
+/*!
+ * Returns a C string representation of {error}.
+ *
+ * The resulting string should not be free'd.
+ */
+char * errtype_c(CLibErrorType errorType);
+
+/*!
+ * Returns a String representation of {error}.
+ *
+ * The resultant String should not be free'd.
+ */
+String errtype_str(CLibErrorType errorType);
+
+/*!
+ * Returns an s64 number <= -1, which contains the error and errnum.
+ */
+s64 err_create(CLibErrorType errorType, int errnum);
+
+/*!
+ * Convert the s64 error given by err_create into a String.
+ *
+ * The resultant String should be free'd after use.
+ */
+String err_reason(s64 error_s64);
+
+
+
+// End __CLIB_datatypes_h
 #endif

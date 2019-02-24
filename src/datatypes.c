@@ -1,7 +1,34 @@
 #include <memory.h>
 #include <stdio.h>
 #include <limits.h>
+#include <errno.h>
 #include "datatypes.h"
+
+//
+// Error Types
+//
+
+char * CLibErrorTypeStrings[ERROR_COUNT] = {
+    "ERROR_SUCCESS: Success",
+
+    "ERROR_FREED: Resource has been free'd",
+    "ERROR_STRING_EXHAUSTED: String has been exhausted",
+
+    "ERROR_ARG_NULL: Argument unexpectedly NULL",
+    "ERROR_ARG_INVALID: Invalid arguments",
+    "ERROR_NEG_LENGTH: Invalid negative length",
+    "ERROR_ALLOC: Error allocating memory",
+    "ERROR_FORMAT: Error formatting string",
+    "ERROR_CAST: Cannot cast number",
+
+    "ERROR_FILE_OPEN: Error opening file",
+    "ERROR_FILE_SEEK: Error seeking in file",
+    "ERROR_FILE_TELL: Error telling the location in file",
+    "ERROR_FILE_READ: Error reading file",
+    "ERROR_FILE_CLOSE: Error closing file"
+};
+
+
 
 //
 // Numbers
@@ -12,6 +39,14 @@ bool can_cast_s64_to_sizet(s64 num) {
 }
 
 bool can_cast_sizet_to_s64(size_t num) {
+    return num <= S64_MAX;
+}
+
+bool can_cast_s64_to_u64(s64 num) {
+    return num >= 0;
+}
+
+bool can_cast_u64_to_s64(u64 num) {
     return num <= S64_MAX;
 }
 
@@ -191,12 +226,12 @@ static void u64_merge(u64 * array, u64 * buffer, u64 left, u64 middle, u64 right
 
 bool u64_mergeSort(u64 * array, u64 length) {
     u64 * buffer = malloc(length * sizeof(u64));
-
     if(buffer == NULL)
         return false;
 
     u64_mergeSort_withBuffer(array, buffer, length);
 
+    free(buffer);
     return true;
 }
 
@@ -273,28 +308,39 @@ static void u64_merge(u64 * array, u64 * buffer, u64 left, u64 middle, u64 right
 // Strings
 //
 
+String str_copy(String string) {
+    if(str_isErrored(string) || str_isEmpty(string))
+        return string;
+
+    String copy = str_createUninitialised(string.length);
+    if(str_isErrored(copy))
+        return copy;
+
+    memcpy(copy.data, string.data, string.length);
+
+    return copy;
+}
+
 String str_create(char * data) {
     if(data == NULL)
-        return str_createInvalid();
+        return str_createErrored(ERROR_ARG_NULL, 0);
 
     size_t length = strlen(data);
     if(!can_cast_sizet_to_s64(length))
-        return str_createInvalid();
+        return str_createErrored(ERROR_CAST, 0);
 
     return str_createOfLength(data, (s64) length);
 }
 
 String str_createCopy(char * data) {
-    size_t length = strlen(data);
-    if(!can_cast_sizet_to_s64(length))
-        return str_createInvalid();
-
-    return str_copy(str_createOfLength(data, (s64) length));
+    return str_copy(str_create(data));
 }
 
 String str_createOfLength(char * data, s64 length) {
     if(length <= 0) {
         data = NULL;
+    } else if (data == NULL) {
+        return str_createErrored(ERROR_ARG_NULL, 0);
     }
 
     String string;
@@ -311,11 +357,11 @@ String str_createCopyOfLength(char * data, s64 length) {
 
 String str_createUninitialised(s64 length) {
     if(length < 0)
-        return str_createInvalid();
+        return str_createErrored(ERROR_NEG_LENGTH, 0);
     if(length == 0)
         return str_createEmpty();
     if(!can_cast_s64_to_sizet(length))
-        return str_createInvalid();
+        return str_createErrored(ERROR_CAST, 0);
 
     String string;
 
@@ -323,13 +369,13 @@ String str_createUninitialised(s64 length) {
     string.length = length;
 
     if(string.data == NULL)
-        return str_createInvalid();
+        return str_createErrored(ERROR_ALLOC, errno);
 
     return string;
 }
 
-String str_createInvalid() {
-    return str_createOfLength(NULL, -1);
+String str_createErrored(CLibErrorType errorType, int errnum) {
+    return str_createOfLength(NULL, err_create(errorType, errnum));
 }
 
 String str_createEmpty() {
@@ -341,26 +387,36 @@ bool str_isEmpty(String string) {
 }
 
 bool str_isValid(String string) {
-    return string.length >= 0;
+    if (string.length > 0)
+        return string.data != NULL;
+
+    return string.length == 0;
 }
 
-bool str_isInvalid(String string) {
+bool str_isErrored(String string) {
     return !str_isValid(string);
 }
 
+String str_getErrorReason(String string) {
+    if (!str_isErrored(string))
+        return str_createCopy("String is valid");
+
+    return err_reason(string.length);
+}
+
 void str_destroy(String * string) {
-    if(str_isInvalid(*string))
+    if(str_isErrored(*string))
         return;
 
     if(string->data != NULL) {
         free(string->data);
     }
 
-    *string = str_createInvalid();
+    *string = str_createErrored(ERROR_FREED, 0);
 }
 
 char * str_c(String string) {
-    if(str_isInvalid(string))
+    if(str_isErrored(string))
         return NULL;
 
     s64 new_length = string.length + 1;
@@ -402,39 +458,24 @@ String str_vformat(char * format, va_list arguments) {
 
     s64 length = vsnprintf(NULL, 0, format, arguments);
     if(length < 0)
-        return str_createInvalid();
+        return str_createErrored(ERROR_FORMAT, errno);
 
     // For the null character
     length += 1;
     if(!can_cast_s64_to_sizet(length))
-        return str_createInvalid();
+        return str_createErrored(ERROR_CAST, 0);
 
     char * data = malloc((size_t) length);
     if(data == NULL)
-        return str_createInvalid();
+        return str_createErrored(ERROR_ALLOC, errno);
 
     vsprintf(data, format, argumentsCopy);
 
     return str_createOfLength(data, length - 1);
 }
 
-String str_copy(String string) {
-    if(str_isInvalid(string))
-        return str_createInvalid();
-    if(string.length == 0)
-        return str_createEmpty();
-
-    String copy = str_createUninitialised(string.length);
-    if(str_isInvalid(copy))
-        return copy;
-
-    memcpy(copy.data, string.data, string.length);
-
-    return copy;
-}
-
 bool str_equals(String string1, String string2) {
-    if(str_isInvalid(string1) || str_isInvalid(string2))
+    if(str_isErrored(string1) || str_isErrored(string2))
         return false;
 
     if(string1.length != string2.length)
@@ -450,7 +491,7 @@ bool str_equals(String string1, String string2) {
 }
 
 bool str_startsWith(String string, String prefix) {
-    if(str_isInvalid(string) || str_isInvalid(prefix))
+    if(str_isErrored(string) || str_isErrored(prefix))
         return false;
 
     if(prefix.length == 0)
@@ -466,7 +507,7 @@ bool str_startsWith(String string, String prefix) {
 }
 
 bool str_endsWith(String string, String suffix) {
-    if(str_isInvalid(string) || str_isInvalid(suffix))
+    if(str_isErrored(string) || str_isErrored(suffix))
         return false;
 
     if(suffix.length == 0)
@@ -494,7 +535,7 @@ s64 str_indexOfString(String string, String find) {
 }
 
 s64 str_indexOfCharAfterIndex(String string, char find, s64 index) {
-    if(str_isInvalid(string) || index < 0)
+    if(str_isErrored(string) || index < 0)
         return -2;
 
     for(; index < string.length; index++) {
@@ -505,7 +546,7 @@ s64 str_indexOfCharAfterIndex(String string, char find, s64 index) {
 }
 
 s64 str_indexOfStringAfterIndex(String string, String find, s64 index) {
-    if(str_isInvalid(string) || str_isInvalid(find) || index < 0)
+    if(str_isErrored(string) || str_isErrored(find) || index < 0)
         return -2;
 
     if(find.length > string.length)
@@ -530,7 +571,7 @@ s64 str_indexOfStringAfterIndex(String string, String find, s64 index) {
 }
 
 s64 str_lastIndexOfChar(String string, char find) {
-    if(str_isInvalid(string))
+    if(str_isErrored(string))
         return -2;
 
     s64 index = string.length;
@@ -544,7 +585,7 @@ s64 str_lastIndexOfChar(String string, char find) {
 }
 
 s64 str_lastIndexOfString(String string, String find) {
-    if(str_isInvalid(string) || str_isInvalid(find))
+    if(str_isErrored(string) || str_isErrored(find))
         return -2;
 
     if(find.length > string.length)
@@ -577,7 +618,7 @@ bool str_containsString(String string, String find) {
 }
 
 void str_toUppercase(String string) {
-    if(str_isInvalid(string))
+    if(str_isErrored(string))
         return;
 
     for(u64 index = 0; index < string.length; index++) {
@@ -586,7 +627,7 @@ void str_toUppercase(String string) {
 }
 
 void str_toLowercase(String string) {
-    if(str_isInvalid(string))
+    if(str_isErrored(string))
         return;
 
     for(u64 index = 0; index < string.length; index++) {
@@ -594,34 +635,34 @@ void str_toLowercase(String string) {
     }
 }
 
-bool str_set(String string, s64 index, char character) {
-    if(str_isInvalid(string))
-        return false;
+CLibErrorType str_set(String string, s64 index, char character) {
+    if(str_isErrored(string))
+        return ERROR_ARG_INVALID;
     if(index < 0 || index >= string.length)
-        return false;
+        return ERROR_ARG_INVALID;
 
     // Temp variable to remove broken CLion unused value warning
     char * data = string.data;
 
     data[index] = character;
-    return true;
+    return ERROR_SUCCESS;
 }
 
-bool str_setChars(String string, s64 index, String replacement) {
-    if(str_isInvalid(string) || str_isInvalid(replacement))
-        return false;
+CLibErrorType str_setChars(String string, s64 index, String replacement) {
+    if(str_isErrored(string) || str_isErrored(replacement))
+        return ERROR_ARG_INVALID;
     if(index < 0 || index + replacement.length > string.length)
-        return false;
+        return ERROR_ARG_INVALID;
 
     if(replacement.length == 0)
-        return true;
+        return ERROR_SUCCESS;
 
     memmove(&string.data[index], replacement.data, replacement.length);
-    return true;
+    return ERROR_SUCCESS;
 }
 
 void str_replaceChar(String string, char find, char replacement) {
-    if(str_isInvalid(string))
+    if(str_isErrored(string))
         return;
 
     for(s64 index = 0; index < string.length; index++) {
@@ -632,8 +673,8 @@ void str_replaceChar(String string, char find, char replacement) {
 }
 
 String str_replaceString(String string, String find, String replacement) {
-    if(str_isInvalid(string) || str_isInvalid(find) || str_isInvalid(replacement))
-        return str_createInvalid();
+    if(str_isErrored(string) || str_isErrored(find) || str_isErrored(replacement))
+        return str_createErrored(ERROR_ARG_INVALID, 0);
 
     StringBuilder builder = strbuilder_create(string.length);
 
@@ -666,10 +707,10 @@ String str_replaceCString(String string, char * find, char * replacement) {
 }
 
 String str_replaceStringInPlace(String string, String find, String replacement) {
-    if(str_isInvalid(string) || str_isInvalid(find) || str_isInvalid(replacement))
-        return str_createInvalid();
+    if(str_isErrored(string) || str_isErrored(find) || str_isErrored(replacement))
+        return str_createErrored(ERROR_ARG_INVALID, 0);
     if(replacement.length > find.length)
-        return str_createInvalid();
+        return str_createErrored(ERROR_ARG_INVALID, 0);
 
     if(find.length == replacement.length) {
         s64 index = 0;
@@ -724,7 +765,7 @@ String str_replaceCStringInPlace(String string, char * find, char * replacement)
 }
 
 void str_reverse(String string) {
-    if(str_isInvalid(string))
+    if(str_isErrored(string))
         return;
     if(string.length <= 1)
         return;
@@ -745,27 +786,33 @@ void str_reverse(String string) {
 }
 
 String str_concat(String string1, String string2) {
-    if(str_isInvalid(string1) || str_isInvalid(string2))
-        return str_createInvalid();
+    if(str_isErrored(string1) || str_isErrored(string2))
+        return str_createErrored(ERROR_ARG_INVALID, 0);
 
     String newString = str_createUninitialised(string1.length + string2.length);
-    if(str_isInvalid(newString))
+    if(str_isErrored(newString))
         return newString;
 
-    bool success = str_setChars(newString, 0, string1);
-    success &= str_setChars(newString, string1.length, string2);
+    CLibErrorType result = str_setChars(newString, 0, string1);
+    if (result != ERROR_SUCCESS) {
+        str_destroy(&newString);
+        return str_createErrored(result, 0);
+    }
 
-    if(!success)
-        return str_createInvalid();
+    result = str_setChars(newString, string1.length, string2);
+    if (result != ERROR_SUCCESS) {
+        str_destroy(&newString);
+        return str_createErrored(result, 0);
+    }
 
     return newString;
 }
 
 String str_substring(String string, s64 start, s64 end) {
-    if(str_isInvalid(string))
-        return str_createInvalid();
+    if(str_isErrored(string))
+        return string;
     if(start < 0 || start >= string.length || end < start || end > string.length)
-        return str_createInvalid();
+        return str_createErrored(ERROR_ARG_INVALID, 0);
 
     if(start == end)
         return str_createEmpty();
@@ -779,14 +826,12 @@ String str_substring(String string, s64 start, s64 end) {
 }
 
 String str_trim(String string) {
-    // TODO : Make find leading/trailing whitespace
-    //        methods and do just one substring here.
     return str_trimLeading(str_trimTrailing(string));
 }
 
 String str_trimLeading(String string) {
-    if(str_isInvalid(string))
-        return str_createInvalid();
+    if(str_isErrored(string))
+        return string;
 
     s64 start = 0;
     while(start < string.length && char_isWhitespace(string.data[start])) {
@@ -797,8 +842,8 @@ String str_trimLeading(String string) {
 }
 
 String str_trimTrailing(String string) {
-    if(str_isInvalid(string))
-        return str_createInvalid();
+    if(str_isErrored(string))
+        return string;
 
     s64 end = string.length;
     while(end > 0 && char_isWhitespace(string.data[end - 1])) {
@@ -808,18 +853,18 @@ String str_trimTrailing(String string) {
     return str_substring(string, 0, end);
 }
 
-String str_splitAt(String * remaining, s64 index, s64 delimiterLength) {
-    if(str_isInvalid(*remaining))
-        return str_createInvalid();
+String str_split(String * remaining, s64 index, s64 delimiterLength) {
+    if(str_isErrored(*remaining))
+        return *remaining;
 
     if(index < -1 || delimiterLength < 0 || index + delimiterLength >= remaining->length) {
-        *remaining = str_createInvalid();
-        return str_createInvalid();
+        *remaining = str_createErrored(ERROR_ARG_INVALID, 0);
+        return *remaining;
     }
 
     if(index == -1) {
         String splitPart = *remaining;
-        *remaining = str_createInvalid();
+        *remaining = str_createErrored(ERROR_STRING_EXHAUSTED, 0);
 
         return splitPart;
     }
@@ -830,26 +875,26 @@ String str_splitAt(String * remaining, s64 index, s64 delimiterLength) {
     return splitPart;
 }
 
-String str_splitAtChar(String * remaining, char find) {
-    if(str_isInvalid(*remaining))
-        return str_createInvalid();
+String str_splitCh(String * remaining, char find) {
+    if(str_isErrored(*remaining))
+        return *remaining;
 
     s64 index = str_indexOfChar(*remaining, find);
 
-    return str_splitAt(remaining, index, 1);
+    return str_split(remaining, index, 1);
 }
 
-String str_splitAtString(String * remaining, String delimiter) {
-    if(str_isInvalid(*remaining))
-        return str_createInvalid();
+String str_splitStr(String * remaining, String delimiter) {
+    if(str_isErrored(*remaining))
+        return *remaining;
 
     s64 index = str_indexOfString(*remaining, delimiter);
 
-    return str_splitAt(remaining, index, delimiter.length);
+    return str_split(remaining, index, delimiter.length);
 }
 
-String str_splitAtCString(String * remaining, char * delimiter) {
-    return str_splitAtString(remaining, str_create(delimiter));
+String str_splitC(String * remaining, char * delimiter) {
+    return str_splitStr(remaining, str_create(delimiter));
 }
 
 
@@ -860,41 +905,40 @@ String str_splitAtCString(String * remaining, char * delimiter) {
 
 String str_readFile(char * filename) {
     FILE * file = fopen(filename, "rb");
-
     if(file == NULL)
-        return str_createInvalid();
+        return str_createErrored(ERROR_FILE_OPEN, errno);
 
     if(fseek(file, 0, SEEK_END) != 0)
-        return str_createInvalid();
+        return str_createErrored(ERROR_FILE_SEEK, errno);
 
     long position = ftell(file);
     if(position < 0)
-        return str_createInvalid();
+        return str_createErrored(ERROR_FILE_TELL, errno);
     if(position == 0)
         return str_createEmpty();
 
     if(!can_cast_long_to_s64(position))
-        return str_createInvalid();
-    s64 length = (s64) position;
+        return str_createErrored(ERROR_CAST, 0);
 
+    s64 length = (s64) position;
     String buffer = str_createUninitialised(length);
-    if(str_isInvalid(buffer))
-        return str_createInvalid();
+    if(str_isErrored(buffer))
+        return buffer;
     if(fseek(file, 0, SEEK_SET) != 0)
-        return str_createInvalid();
+        return str_createErrored(ERROR_FILE_SEEK, errno);
     if(!can_cast_s64_to_sizet(length))
-        return str_createInvalid();
+        return str_createErrored(ERROR_CAST, 0);
 
     size_t read = fread(buffer.data, 1, (size_t) length, file);
 
     if(read != length) {
         str_destroy(&buffer);
-        return str_createInvalid();
+        return str_createErrored(ERROR_FILE_READ, errno);
     }
 
     if(fclose(file) != 0) {
         str_destroy(&buffer);
-        return str_createInvalid();
+        return str_createErrored(ERROR_FILE_CLOSE, errno);
     }
 
     return buffer;
@@ -910,7 +954,7 @@ StringBuilder strbuilder_create(s64 initialSize) {
     StringBuilder builder;
 
     if(initialSize < 0) {
-        builder.string = str_createInvalid();
+        builder.string = str_createErrored(ERROR_NEG_LENGTH, 0);
         builder.capacity = initialSize;
 
         return builder;
@@ -963,10 +1007,8 @@ bool strbuilder_setCapacity(StringBuilder * builder, s64 capacity) {
 
     if(builder->capacity == 0) {
         builder->string = str_createUninitialised(capacity);
-        if(str_isInvalid(builder->string)) {
-            *builder = strbuilder_createInvalid();
+        if(str_isErrored(builder->string))
             return false;
-        }
 
         builder->string.length = 0;
         builder->capacity = capacity;
@@ -1021,7 +1063,7 @@ bool strbuilder_appendChar(StringBuilder * builder, char character) {
 }
 
 bool strbuilder_append(StringBuilder * builder, String string) {
-    if(strbuilder_isInvalid(*builder) || str_isInvalid(string))
+    if(strbuilder_isInvalid(*builder) || str_isErrored(string))
         return false;
 
     if(string.length == 0)
@@ -1650,4 +1692,49 @@ char * stack_appendData(Stack * stack, char * data, s64 length) {
     memcpy(start, data, length);
 
     return start;
+}
+
+
+
+//
+// Errors
+//
+
+char * errtype_c(CLibErrorType errorType) {
+    if (errorType >= ERROR_COUNT)
+        return "Invalid error";
+
+    return CLibErrorTypeStrings[errorType];
+}
+
+String errtype_str(CLibErrorType errorType) {
+    return str_create(errtype_c(errorType));
+}
+
+s64 err_create(CLibErrorType errorType, int errnum) {
+    // 16 bits for the CLibError, 32 bits for the errnum
+    if ((u64) errorType > 0xFFFF || errnum < 0 || errnum >= 0xFFFFFFFF)
+        return -1;
+
+    u64 num = errorType | (errnum >> 16);
+
+    return -1 - num;
+}
+
+String err_reason(s64 error_s64) {
+    if (error_s64 >= 0)
+        return str_format("Invalid error %d", error_s64);
+
+    if (can_cast_s64_to_u64(-(error_s64 + 1)))
+        return str_format("Invalid error %d", error_s64);
+
+    u64 error_bits = (u64) (-(error_s64 + 1));
+
+    CLibErrorType error = (CLibErrorType) (error_bits & 0xFFFF);
+    int errnum = (int) (error_bits << 16);
+
+    if (errnum == 0)
+        return str_createCopy(errtype_c(error));
+
+    return str_format("%s: %s", errtype_c(error), strerror(errnum));
 }

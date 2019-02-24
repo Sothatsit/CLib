@@ -8,7 +8,6 @@
  * In README under Features -> String
  */
 bool test_String_example() {
-    // TODO : Update the README
     char * name = "CLib";
     int version = 1;
     char * url = "https://github.com/Sothatsit/CLib";
@@ -21,7 +20,7 @@ bool test_String_example() {
         String keyValue;
         String remaining = contrived;
         while(str_isValid(remaining)) {
-            keyValue = str_splitAtCString(&remaining, ", ");
+            keyValue = str_splitC(&remaining, ", ");
 
             // Print out the result
             // printf("%s\n", str_c(keyValue));

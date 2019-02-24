@@ -17,15 +17,15 @@ String contrived = str_format("name: %s, version: %i, url: %s", name, version, u
 // Print out each key value pair in contrived
 String keyValue;
 String remaining = contrived;
-while(!str_isEmpty(remaining)) {
-    keyValue = str_splitAtCString(&remaining, ", ");
+while(str_isValid(remaining)) {
+    keyValue = str_splitC(&remaining, ", ");
 
     // Print out the result
-    printf("%s\n", str_toCString(keyValue));
+    printf("%s\n", str_c(keyValue));
 }
 
 // Destroy the String
-str_destroy(contrived);
+str_destroy(&contrived);
 ```
 ```
 name: CLib

@@ -31,7 +31,7 @@
 typedef enum {
 
     ERROR_SUCCESS,
-
+    ERROR_NONE,
     ERROR_UNKNOWN,
     ERROR_INVALID,
 
@@ -389,6 +389,20 @@ bool str_isValid(String string);
 bool str_isErrored(String string);
 
 /*!
+ * Returns the CLibErrorType of the errored string {string}.
+ *
+ * If {string} is not errored, then ERROR_NONE will be returned.
+ */
+CLibErrorType str_getErrorType(String string);
+
+/*!
+ * Returns the errnum of the errored string {string}.
+ *
+ * If {string} is not errored, then 0 will be returned.
+ */
+int str_getErrorNum(String string);
+
+/*!
  * Returns a String containing the reason for the errored String {string}.
  */
 String str_getErrorReason(String string);
@@ -407,7 +421,7 @@ void str_destroy(String * string);
 /*!
  * Creates a null terminated version of {string}.
  *
- * The returned null terminated string should be freed.
+ * The returned null terminated string should be free'd.
  */
 char * str_c(String string);
 
@@ -417,18 +431,29 @@ char * str_c(String string);
 char * str_toCString(String string);
 
 /*!
- * Creates a String from the printf format string {format}.
- *
- * Will return an empty String on failure.
+ * Creates a String from the printf format string
+ * {format} and the arguments {arguments}.
  */
 String str_format(char * format, ...);
 
 /*!
- * Creates a String from the printf format string {format} and the arguments {arguments}.
+ * Creates a null-terminated string from the printf format
+ * string {format} and the arguments {arguments}.
  *
- * Will return an empty String on failure.
+ * Will return NULL on failure.
+ */
+char * str_formatC(char * format, ...);
+
+/*!
+ * Creates a String from the printf format string {format} and the arguments {arguments}.
  */
 String str_vformat(char * format, va_list arguments);
+
+/*!
+ * Creates a null-terminated string from the printf
+ * format string {format} and the arguments {arguments}.
+ */
+char * str_vformatC(char * format, va_list arguments);
 
 /*!
  * Check if {string1} and {string2} contain the same data.
@@ -465,7 +490,17 @@ s64 str_indexOfChar(String string, char find);
  * Will return -1 if {find} is not found.
  * Will return -2 on error.
  */
-s64 str_indexOfString(String string, String find);
+s64 str_indexOfStr(String string, String find);
+
+/*!
+ * Find the index of the first occurence of {find} in {string}.
+ *
+ * If {find} is empty will return 1 unless {string} is also empty, in which case it will return -1.
+ *
+ * Will return -1 if {find} is not found.
+ * Will return -2 on error.
+ */
+s64 str_indexOfC(String string, char * find);
 
 /*!
  * Find the index of the first occurence of {find} after or at {index} in {string}.
@@ -473,7 +508,7 @@ s64 str_indexOfString(String string, String find);
  * Will return -1 if {find} is not found after or at {index}.
  * Will return -2 on error.
  */
-s64 str_indexOfCharAfterIndex(String string, char find, s64 index);
+s64 str_indexOfCharAfter(String string, char find, s64 index);
 
 /*!
  * Find the index of the first occurence of {find} after or at {index} in {string}.
@@ -481,7 +516,15 @@ s64 str_indexOfCharAfterIndex(String string, char find, s64 index);
  * Will return -1 if {find} is not found after or at {index}, or if {find} is empty.
  * Will return -2 on error.
  */
-s64 str_indexOfStringAfterIndex(String string, String find, s64 index);
+s64 str_indexOfStrAfter(String string, String find, s64 index);
+
+/*!
+ * Find the index of the first occurence of {find} after or at {index} in {string}.
+ *
+ * Will return -1 if {find} is not found after or at {index}, or if {find} is empty.
+ * Will return -2 on error.
+ */
+s64 str_indexOfCAfter(String string, char * find, s64 index);
 
 /*!
  * Find the index of the last occurence of {find} in {string}.
@@ -497,7 +540,15 @@ s64 str_lastIndexOfChar(String string, char find);
  * Will return -1 if {find} is not found.
  * Will return -2 on error.
  */
-s64 str_lastIndexOfString(String string, String find);
+s64 str_lastIndexOfStr(String string, String find);
+
+/*!
+ * Find the index of the last occurence of {find} in {string}.
+ *
+ * Will return -1 if {find} is not found.
+ * Will return -2 on error.
+ */
+s64 str_lastIndexOfC(String string, char * find);
 
 /*!
  * Check whether {string} contains {find}.
@@ -507,7 +558,7 @@ bool str_containsChar(String string, char find);
 /*!
  * Check whether {string} contains {find}.
  */
-bool str_contains(String string, String find);
+bool str_containsStr(String string, String find);
 
 /*!
  * Check whether {string} contains the null-terminated string {find}.
@@ -559,7 +610,7 @@ void str_replaceChar(String string, char find, char replacement);
  *
  * Will return an empty String on failure.
  */
-String str_replaceString(String string, String find, String replacement);
+String str_replaceStr(String string, String find, String replacement);
 
 /*!
  * Replace all occurences of {find} in {string} with {replacement}.
@@ -568,7 +619,7 @@ String str_replaceString(String string, String find, String replacement);
  *
  * Will return an empty String on failure.
  */
-String str_replaceCString(String string, char * find, char * replacement);
+String str_replaceC(String string, char * find, char * replacement);
 
 /*!
  * Replace all occurences of {find} in {string} with {replacement}, modifying {string}.
@@ -577,7 +628,7 @@ String str_replaceCString(String string, char * find, char * replacement);
  *
  * Will return an empty String on failure.
  */
-String str_replaceStringInPlace(String string, String find, String replacement);
+String str_replaceStrInPlace(String string, String find, String replacement);
 
 /*!
  * Replace all occurences of {find} in {string} with {replacement}, modifying {string}.
@@ -586,7 +637,7 @@ String str_replaceStringInPlace(String string, String find, String replacement);
  *
  * Will return an empty String on failure.
  */
-String str_replaceCStringInPlace(String string, char * find, char * replacement);
+String str_replaceCInPlace(String string, char * find, char * replacement);
 
 /*!
  * Reverse the characters in {string} in place.
@@ -650,7 +701,7 @@ String str_trimTrailing(String string);
  *
  * If {index} is -1, {remaining} will be returned and {remaining} will be set to an empty String.
  */
-String str_split(String * remaining, s64 index, s64 delimiterLength);
+String str_splitAt(String * remaining, s64 index, s64 delimiterLength);
 
 /*!
  * Returns a substring of {remaining} from its start to the first occurence of {find}.
@@ -659,7 +710,7 @@ String str_split(String * remaining, s64 index, s64 delimiterLength);
  * If {find} is not found, {remaining} will be returned and {remaining} will be set to an empty String.
  * Therefore, if {remaining} is empty, there are no more occurences of {find} in the String.
  */
-String str_splitCh(String *remaining, char delimiter);
+String str_splitAtChar(String *remaining, char delimiter);
 
 /*!
  * Returns a substring of {remaining} from its start to the first occurence of {delimiter}.
@@ -668,7 +719,7 @@ String str_splitCh(String *remaining, char delimiter);
  * If {delimiter} is not found, {remaining} will be returned and {remaining} will be set to an empty String.
  * Therefore, if {remaining} is empty, there are no more occurences of {delimiter} in the String.
  */
-String str_splitStr(String *remaining, String delimiter);
+String str_splitAtStr(String *remaining, String delimiter);
 
 /*!
  * Returns a substring of {remaining} from its start to the first occurence of {delimiter}.
@@ -677,7 +728,7 @@ String str_splitStr(String *remaining, String delimiter);
  * If {delimiter} is not found, {remaining} will be returned and {remaining} will be set to an empty String.
  * Therefore, if {remaining} is empty, there are no more occurences of {delimiter} in the String.
  */
-String str_splitC(String * remaining, char * delimiter);
+String str_splitAtC(String * remaining, char * delimiter);
 
 
 

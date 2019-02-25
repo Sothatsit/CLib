@@ -62,7 +62,7 @@ bool test_err_reason() {
         for (int errnum = 0; errnum < sys_nerr; ++errnum) {
             String reason = err_reason(err_create(errorType, errnum));
 
-            assert(str_contains(reason, errtype_str(errorType)));
+            assert(str_containsStr(reason, errtype_str(errorType)));
             if (errnum != 0) {
                 assert(str_containsC(reason, strerror(errnum)));
             }
@@ -75,10 +75,10 @@ bool test_err_reason() {
 bool test_err_type() {
     assert(err_type(-1 - ERROR_COUNT) == ERROR_INVALID);
     assert(err_type(-1) == ERROR_SUCCESS);
-    assert(err_type(0) == ERROR_INVALID);
-    assert(err_type(5) == ERROR_INVALID);
-    assert(err_type(234) == ERROR_INVALID);
-    assert(err_type(1532) == ERROR_INVALID);
+    assert(err_type(0) == ERROR_NONE);
+    assert(err_type(5) == ERROR_NONE);
+    assert(err_type(234) == ERROR_NONE);
+    assert(err_type(1532) == ERROR_NONE);
 
     assert(ERROR_SUCCESS == 0);
     for (CLibErrorType errorType = ERROR_SUCCESS; errorType < ERROR_COUNT; ++errorType) {

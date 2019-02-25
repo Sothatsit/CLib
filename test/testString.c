@@ -93,8 +93,92 @@ bool test_str_createEmpty() {
     String empty = str_createEmpty();
     {
         assert(empty.length == 0);
+        assert(str_isValid(empty));
+        assert(!str_isErrored(empty));
     }
     str_destroy(&empty);
+
+    return true;
+}
+
+bool test_str_createErrored() {
+    assert(ERROR_SUCCESS == 0);
+    for (CLibErrorType errorType = ERROR_SUCCESS; errorType < ERROR_COUNT; ++errorType) {
+        for (int errnum = 0; errnum < sys_nerr; ++errnum) {
+            String errored = str_createErrored(errorType, errnum);
+
+            assert(str_isErrored(errored));
+            assert(!str_isValid(errored));
+            assert(errored.data == NULL);
+        }
+    }
+
+    return true;
+}
+
+bool test_str_getErrorType() {
+    assert(str_getErrorType(str_create("Apples")) == ERROR_NONE);
+    assert(str_getErrorType(str_createEmpty()) == ERROR_NONE);
+
+    assert(ERROR_SUCCESS == 0);
+    for (CLibErrorType errorType = ERROR_SUCCESS; errorType < ERROR_COUNT; ++errorType) {
+        for (int errnum = 0; errnum < sys_nerr; ++errnum) {
+            String errored = str_createErrored(errorType, errnum);
+
+            assert(str_getErrorType(errored) == errorType);
+        }
+    }
+
+    return true;
+}
+
+bool test_str_getErrorNum() {
+    assert(str_getErrorNum(str_create("Apples")) == 0);
+    assert(str_getErrorNum(str_createEmpty()) == 0);
+
+    assert(ERROR_SUCCESS == 0);
+    for (CLibErrorType errorType = ERROR_SUCCESS; errorType < ERROR_COUNT; ++errorType) {
+        for (int errnum = 0; errnum < sys_nerr; ++errnum) {
+            String errored = str_createErrored(errorType, errnum);
+
+            assert(str_getErrorNum(errored) == errnum);
+        }
+    }
+
+    return true;
+}
+
+bool test_str_getErrorReason() {
+    assert(ERROR_SUCCESS == 0);
+    for (CLibErrorType errorType = ERROR_SUCCESS; errorType < ERROR_COUNT; ++errorType) {
+        for (int errnum = 0; errnum < sys_nerr; ++errnum) {
+            String errored = str_createErrored(errorType, errnum);
+            String reason = str_getErrorReason(errored);
+            {
+                assert(str_containsStr(reason, errtype_str(errorType)));
+                if (errnum != 0) {
+                    assert(str_containsC(reason, strerror(errnum)));
+                }
+            }
+            str_destroy(&reason);
+        }
+    }
+
+    return true;
+}
+
+bool test_str_isErrored() {
+    assert(!str_isErrored(str_create("Apples")));
+    assert(!str_isErrored(str_createEmpty()));
+
+    assert(ERROR_SUCCESS == 0);
+    for (CLibErrorType errorType = ERROR_SUCCESS; errorType < ERROR_COUNT; ++errorType) {
+        for (int errnum = 0; errnum < sys_nerr; ++errnum) {
+            String errored = str_createErrored(errorType, errnum);
+
+            assert(str_isErrored(errored));
+        }
+    }
 
     return true;
 }
@@ -132,6 +216,20 @@ bool test_str_c() {
     return true;
 }
 
+bool test_str_toCString() {
+    String johnDoe = str_createCopy("John Doe");
+    char * nullTerminated = str_toCString(johnDoe);
+    {
+        assertStrValid(johnDoe);
+
+        assert(strcmp("John Doe", nullTerminated) == 0);
+    }
+    str_destroy(&johnDoe);
+    free(nullTerminated);
+
+    return true;
+}
+
 bool test_str_format() {
     String formatted = str_format("%s is %d%% good for you", "Apple Pie", 50);
     String expected = str_createCopy("Apple Pie is 50% good for you");
@@ -147,7 +245,7 @@ bool test_str_format() {
     return true;
 }
 
-String call_str_vformat(char * format, ...) {
+String _call_str_vformat(char * format, ...) {
     va_list args;
     va_start(args, format);
 
@@ -159,7 +257,7 @@ String call_str_vformat(char * format, ...) {
 }
 
 bool test_str_vformat() {
-    String formatted = call_str_vformat("%s is %d%% good for you", "Apple Pie", 50);
+    String formatted = _call_str_vformat("%s is %d%% good for you", "Apple Pie", 50);
     String expected = str_createCopy("Apple Pie is 50% good for you");
     {
         assertStrValid(formatted);
@@ -169,6 +267,41 @@ bool test_str_vformat() {
     }
     str_destroy(&formatted);
     str_destroy(&expected);
+
+    return true;
+}
+
+bool test_str_formatC() {
+    char * formatted = str_formatC("%s is %d%% good for you", "Apple Pie", 50);
+    char * expected = "Apple Pie is 50% good for you";
+    {
+        assert(formatted != NULL);
+        assert(strcmp(formatted, expected) == 0);
+    }
+    free(formatted);
+
+    return true;
+}
+
+char * _call_str_vformatC(char * format, ...) {
+    va_list args;
+    va_start(args, format);
+
+    char * returnValue = str_vformatC(format, args);
+
+    va_end(args);
+
+    return returnValue;
+}
+
+bool test_str_vformatC() {
+    char * formatted = _call_str_vformatC("%s is %d%% good for you", "Apple Pie", 50);
+    char * expected = "Apple Pie is 50% good for you";
+    {
+        assert(formatted != NULL);
+        assert(strcmp(formatted, expected) == 0);
+    }
+    free(formatted);
 
     return true;
 }
@@ -295,7 +428,7 @@ bool test_str_indexOfChar() {
     return true;
 }
 
-bool test_str_indexOfString() {
+bool test_str_indexOfStr() {
     String names = str_createCopyOfLength("Little Finger\0Mance\0Jon\0Tyrrion\0Sansa\0Arya", 42);
     String littleFinger = str_createCopy("Little Finger");
     String jon = str_createCopy("Jon");
@@ -306,9 +439,9 @@ bool test_str_indexOfString() {
         assertStrValid(jon);
         assertStrValid(arya);
 
-        assert(str_indexOfString(names, littleFinger) == 0);
-        assert(str_indexOfString(names, jon) == 20);
-        assert(str_indexOfString(names, arya) == 37);
+        assert(str_indexOfStr(names, littleFinger) == 0);
+        assert(str_indexOfStr(names, jon) == 20);
+        assert(str_indexOfStr(names, arya) == 37);
     }
     str_destroy(&names);
     str_destroy(&littleFinger);
@@ -318,21 +451,35 @@ bool test_str_indexOfString() {
     return true;
 }
 
-bool test_str_indexOfCharAfterIndex() {
+bool test_str_indexOfC() {
     String names = str_createCopyOfLength("Little Finger\0Mance\0Jon\0Tyrrion\0Sansa\0Arya", 42);
     {
         assertStrValid(names);
 
-        assert(str_indexOfCharAfterIndex(names, ' ', 6) == 6);
-        assert(str_indexOfCharAfterIndex(names, 'a', 16) == 33);
-        assert(str_indexOfCharAfterIndex(names, '\0', 15) == 19);
+        assert(str_indexOfC(names, "Little Finger") == 0);
+        assert(str_indexOfC(names, "Jon") == 20);
+        assert(str_indexOfC(names, "Arya") == 38);
     }
     str_destroy(&names);
 
     return true;
 }
 
-bool test_str_indexOfStringAfterIndex() {
+bool test_str_indexOfCharAfter() {
+    String names = str_createCopyOfLength("Little Finger\0Mance\0Jon\0Tyrrion\0Sansa\0Arya", 42);
+    {
+        assertStrValid(names);
+
+        assert(str_indexOfCharAfter(names, ' ', 6) == 6);
+        assert(str_indexOfCharAfter(names, 'a', 16) == 33);
+        assert(str_indexOfCharAfter(names, '\0', 15) == 19);
+    }
+    str_destroy(&names);
+
+    return true;
+}
+
+bool test_str_indexOfStrAfter() {
     String names = str_createCopyOfLength("Little Finger\0Arya\0Little Finger\0Tyrrion\0Sansa\0Arya", 51);
     String littleFinger = str_createCopy("Little Finger");
     String arya = str_createCopyOfLength("\0Arya", 5);
@@ -341,17 +488,35 @@ bool test_str_indexOfStringAfterIndex() {
         assertStrValid(littleFinger);
         assertStrValid(arya);
 
-        assert(str_indexOfStringAfterIndex(arya, littleFinger, 0) == -1);
+        assert(str_indexOfStrAfter(arya, littleFinger, 0) == -1);
 
-        assert(str_indexOfStringAfterIndex(names, littleFinger, 0) == 0);
-        assert(str_indexOfStringAfterIndex(names, littleFinger, 1) == 19);
-        assert(str_indexOfStringAfterIndex(names, arya, 15) == 46);
+        assert(str_indexOfStrAfter(names, littleFinger, 0) == 0);
+        assert(str_indexOfStrAfter(names, littleFinger, 1) == 19);
+        assert(str_indexOfStrAfter(names, arya, 15) == 46);
 
-        assert(str_indexOfStringAfterIndex(names, str_createEmpty(), 5) == -1);
+        assert(str_indexOfStrAfter(names, str_createEmpty(), 5) == -1);
     }
     str_destroy(&names);
     str_destroy(&littleFinger);
     str_destroy(&arya);
+
+    return true;
+}
+
+bool test_str_indexOfCAfter() {
+    String names = str_createCopyOfLength("Little Finger\0Arya\0Little Finger\0Tyrrion\0Sansa\0Arya", 51);
+    {
+        assertStrValid(names);
+
+        assert(str_indexOfCAfter(str_create("Arya"), "Little Finger", 0) == -1);
+
+        assert(str_indexOfCAfter(names, "Little Finger", 0) == 0);
+        assert(str_indexOfCAfter(names, "Little Finger", 1) == 19);
+        assert(str_indexOfCAfter(names, "Arya", 15) == 47);
+
+        assert(str_indexOfCAfter(names, "", 5) == -1);
+    }
+    str_destroy(&names);
 
     return true;
 }
@@ -370,7 +535,7 @@ bool test_str_lastIndexOfChar() {
     return true;
 }
 
-bool test_str_lastIndexOfString() {
+bool test_str_lastIndexOfStr() {
     String names = str_createCopyOfLength("Little Finger\0Arya\0Little Finger\0Tyrrion\0Sansa\0Arya", 51);
     String littleFinger = str_createCopy("Little Finger");
     String tyrrion = str_createCopy("Tyrrion");
@@ -381,14 +546,28 @@ bool test_str_lastIndexOfString() {
         assertStrValid(tyrrion);
         assertStrValid(arya);
 
-        assert(str_lastIndexOfString(names, littleFinger) == 19);
-        assert(str_lastIndexOfString(names, tyrrion) == 33);
-        assert(str_lastIndexOfString(names, arya) == 46);
+        assert(str_lastIndexOfStr(names, littleFinger) == 19);
+        assert(str_lastIndexOfStr(names, tyrrion) == 33);
+        assert(str_lastIndexOfStr(names, arya) == 46);
     }
     str_destroy(&names);
     str_destroy(&littleFinger);
     str_destroy(&tyrrion);
     str_destroy(&arya);
+
+    return true;
+}
+
+bool test_str_lastIndexOfC() {
+    String names = str_createCopyOfLength("Little Finger\0Arya\0Little Finger\0Tyrrion\0Sansa\0Arya", 51);
+    {
+        assertStrValid(names);
+
+        assert(str_lastIndexOfC(names, "Little Finger") == 19);
+        assert(str_lastIndexOfC(names, "Tyrrion") == 33);
+        assert(str_lastIndexOfC(names, "Arya") == 47);
+    }
+    str_destroy(&names);
 
     return true;
 }
@@ -409,7 +588,7 @@ bool test_str_containsChar() {
     return true;
 }
 
-bool test_str_contains() {
+bool test_str_containsStr() {
     String jeff = str_createCopyOfLength("Jeff\0Bob", 8);
     String bob = str_createCopy("Bob");
     String jess = str_createCopy("Jess");
@@ -422,17 +601,33 @@ bool test_str_contains() {
         assertStrValid(withNull);
         assertStrValid(differentAfterNull);
 
-        assert(!str_contains(jeff, jess));
-        assert(str_contains(jeff, bob));
-        assert(!str_contains(bob, jeff));
-        assert(str_contains(jeff, withNull));
-        assert(!str_contains(jeff, differentAfterNull));
+        assert(!str_containsStr(jeff, jess));
+        assert(str_containsStr(jeff, bob));
+        assert(!str_containsStr(bob, jeff));
+        assert(str_containsStr(jeff, withNull));
+        assert(!str_containsStr(jeff, differentAfterNull));
     }
     str_destroy(&jeff);
     str_destroy(&bob);
     str_destroy(&jess);
     str_destroy(&withNull);
     str_destroy(&differentAfterNull);
+
+    return true;
+}
+
+bool test_str_containsC() {
+    String jeff = str_createCopyOfLength("Jeff\0Bob", 8);
+    {
+        assertStrValid(jeff);
+
+        assert(!str_containsC(jeff, "Jess"));
+        assert(str_containsC(jeff, "Bob"));
+        assert(!str_containsC(str_create("Bob"), "Jeff"));
+        assert(str_containsC(jeff, "ff"));
+        assert(!str_containsC(jeff, "Ba"));
+    }
+    str_destroy(&jeff);
 
     return true;
 }
@@ -537,7 +732,7 @@ bool test_str_replaceChar() {
     return true;
 }
 
-bool test_str_replaceString() {
+bool test_str_replaceStr() {
     String apples = str_createCopy("Everyone likes apples, apples are the best, yay apples");
     String pineapples = str_createCopy("Everyone likes pineapples, pineapples are the best, yay pineapples");
     String replaced;
@@ -545,7 +740,7 @@ bool test_str_replaceString() {
         assertStrValid(apples);
         assertStrValid(pineapples);
 
-        replaced = str_replaceString(apples, str_create("apple"), str_create("pineapple"));
+        replaced = str_replaceStr(apples, str_create("apple"), str_create("pineapple"));
 
         assertStrValid(replaced);
         assert(str_equals(replaced, pineapples));
@@ -557,7 +752,7 @@ bool test_str_replaceString() {
     return true;
 }
 
-bool test_str_replaceCString() {
+bool test_str_replaceC() {
     String apples = str_createCopy("Everyone likes apples, apples are the best, yay apples");
     String pineapples = str_createCopy("Everyone likes pineapples, pineapples are the best, yay pineapples");
     String replaced;
@@ -565,7 +760,7 @@ bool test_str_replaceCString() {
         assertStrValid(apples);
         assertStrValid(pineapples);
 
-        replaced = str_replaceCString(apples, "apple", "pineapple");
+        replaced = str_replaceC(apples, "apple", "pineapple");
 
         assertStrValid(replaced);
         assert(str_equals(replaced, pineapples));
@@ -577,14 +772,14 @@ bool test_str_replaceCString() {
     return true;
 }
 
-bool test_str_replaceStringInPlace() {
+bool test_str_replaceStrInPlace() {
     String pineapples = str_createCopy("Everyone likes pineapples, pineapples are the best, yay pineapples");
     String apples = str_createCopy("Everyone likes apples, apples are the best, yay apples");
     {
         assertStrValid(pineapples);
         assertStrValid(apples);
 
-        pineapples = str_replaceStringInPlace(pineapples, str_create("pineapple"), str_create("apple"));
+        pineapples = str_replaceStrInPlace(pineapples, str_create("pineapple"), str_create("apple"));
 
         assert(str_equals(pineapples, apples));
     }
@@ -594,14 +789,14 @@ bool test_str_replaceStringInPlace() {
     return true;
 }
 
-bool test_str_replaceCStringInPlace() {
+bool test_str_replaceCInPlace() {
     String pineapples = str_createCopy("Everyone likes pineapples, pineapples are the best, yay pineapples");
     String apples = str_createCopy("Everyone likes apples, apples are the best, yay apples");
     {
         assertStrValid(pineapples);
         assertStrValid(apples);
 
-        pineapples = str_replaceCStringInPlace(pineapples, "pineapple", "apple");
+        pineapples = str_replaceCInPlace(pineapples, "pineapple", "apple");
 
         assert(str_equals(pineapples, apples));
     }
@@ -741,8 +936,8 @@ bool test_str_splitAt() {
         assertStrValid(expectedSecond);
 
         String third = originalString;
-        String first = str_split(&third, 12, 2);
-        String second = str_split(&third, 6, 9);
+        String first = str_splitAt(&third, 12, 2);
+        String second = str_splitAt(&third, 6, 9);
 
         assertStrValid(first);
         assertStrValid(second);
@@ -770,8 +965,8 @@ bool test_str_splitAtChar() {
         assertStrValid(expectedSecond);
 
         String third = originalString;
-        String first = str_splitCh(&third, ',');
-        String second = str_splitCh(&third, ',');
+        String first = str_splitAtChar(&third, ',');
+        String second = str_splitAtChar(&third, ',');
 
         assertStrValid(first);
         assertStrValid(second);
@@ -789,7 +984,7 @@ bool test_str_splitAtChar() {
     return true;
 }
 
-bool test_str_splitAtString() {
+bool test_str_splitAtStr() {
     String originalString = str_createCopy("Apple, dream, bottle, paper, phone");
     String delimiter = str_createCopy(", ");
     String expectedFirst = str_createCopy("Apple");
@@ -801,8 +996,8 @@ bool test_str_splitAtString() {
         assertStrValid(expectedSecond);
 
         String third = originalString;
-        String first = str_splitStr(&third, delimiter);
-        String second = str_splitStr(&third, delimiter);
+        String first = str_splitAtStr(&third, delimiter);
+        String second = str_splitAtStr(&third, delimiter);
 
         assertStrValid(first);
         assertStrValid(second);
@@ -821,7 +1016,7 @@ bool test_str_splitAtString() {
     return true;
 }
 
-bool test_str_splitAtCString() {
+bool test_str_splitAtC() {
     String originalString = str_createCopy("Apple, dream, bottle, paper, phone");
     String expectedFirst = str_createCopy("Apple");
     String expectedSecond = str_createCopy("dream");
@@ -832,8 +1027,8 @@ bool test_str_splitAtCString() {
         assertStrValid(expectedSecond);
 
         String third = originalString;
-        String first = str_splitC(&third, ", ");
-        String second = str_splitC(&third, ", ");
+        String first = str_splitAtC(&third, ", ");
+        String second = str_splitAtC(&third, ", ");
 
         assertStrValid(first);
         assertStrValid(second);
@@ -864,12 +1059,20 @@ void test_String(int * failures, int * successes) {
     test(str_createCopyOfLength);
     test(str_createUninitialised);
     test(str_createEmpty);
+    test(str_createErrored);
     test(str_isEmpty);
+    test(str_isErrored);
+    test(str_getErrorType);
+    test(str_getErrorNum);
+    test(str_getErrorReason);
     test(str_destroy);
 
     test(str_c);
+    test(str_toCString);
     test(str_format);
     test(str_vformat);
+    test(str_formatC);
+    test(str_vformatC);
     test(str_copy);
 
     test(str_equals);
@@ -878,23 +1081,27 @@ void test_String(int * failures, int * successes) {
 
     test(str_get);
     test(str_indexOfChar);
-    test(str_indexOfString);
-    test(str_indexOfCharAfterIndex);
-    test(str_indexOfStringAfterIndex);
+    test(str_indexOfStr);
+    test(str_indexOfC);
+    test(str_indexOfCharAfter);
+    test(str_indexOfStrAfter);
+    test(str_indexOfCAfter);
     test(str_lastIndexOfChar);
-    test(str_lastIndexOfString);
+    test(str_lastIndexOfStr);
+    test(str_lastIndexOfC);
     test(str_containsChar);
-    test(str_contains);
+    test(str_containsStr);
+    test(str_containsC);
 
     test(str_toUppercase);
     test(str_toLowercase);
     test(str_set);
     test(str_setChars);
     test(str_replaceChar);
-    test(str_replaceString);
-    test(str_replaceCString);
-    test(str_replaceStringInPlace);
-    test(str_replaceCStringInPlace);
+    test(str_replaceStr);
+    test(str_replaceC);
+    test(str_replaceStrInPlace);
+    test(str_replaceCInPlace);
     test(str_reverse);
     test(str_concat);
     test(str_substring);
@@ -903,6 +1110,6 @@ void test_String(int * failures, int * successes) {
     test(str_trimTrailing);
     test(str_splitAt);
     test(str_splitAtChar);
-    test(str_splitAtString);
-    test(str_splitAtCString);
+    test(str_splitAtStr);
+    test(str_splitAtC);
 }

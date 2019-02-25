@@ -10,7 +10,7 @@
 
 char * CLibErrorTypeStrings[ERROR_COUNT] = {
     "ERROR_SUCCESS: Success",
-
+    "ERROR_NONE: No error",
     "ERROR_UNKNOWN: Unknown error",
     "ERROR_INVALID: Invalid error type",
 
@@ -402,10 +402,21 @@ bool str_isErrored(String string) {
     return !str_isValid(string);
 }
 
-String str_getErrorReason(String string) {
+CLibErrorType str_getErrorType(String string) {
     if (!str_isErrored(string))
-        return str_createCopy("String is valid");
+        return ERROR_NONE;
 
+    return err_type(string.length);
+}
+
+int str_getErrorNum(String string) {
+    if (!str_isErrored(string))
+        return 0;
+
+    return err_num(string.length);
+}
+
+String str_getErrorReason(String string) {
     return err_reason(string.length);
 }
 
@@ -457,6 +468,18 @@ String str_format(char * format, ...) {
     return formattedString;
 }
 
+char * str_formatC(char * format, ...) {
+    va_list argList;
+
+    va_start(argList, format);
+
+    char * formattedString = str_vformatC(format, argList);
+
+    va_end(argList);
+
+    return formattedString;
+}
+
 String str_vformat(char * format, va_list arguments) {
     va_list argumentsCopy = {};
     va_copy(argumentsCopy, arguments);
@@ -477,6 +500,28 @@ String str_vformat(char * format, va_list arguments) {
     vsprintf(data, format, argumentsCopy);
 
     return str_createOfLength(data, length - 1);
+}
+
+char * str_vformatC(char * format, va_list arguments) {
+    va_list argumentsCopy = {};
+    va_copy(argumentsCopy, arguments);
+
+    s64 length = vsnprintf(NULL, 0, format, arguments);
+    if(length < 0)
+        return NULL;
+
+    // For the null character
+    length += 1;
+    if(!can_cast_s64_to_sizet(length))
+        return NULL;
+
+    char * data = malloc((size_t) length);
+    if(data == NULL)
+        return NULL;
+
+    vsprintf(data, format, argumentsCopy);
+
+    return data;
 }
 
 bool str_equals(String string1, String string2) {
@@ -532,14 +577,18 @@ char str_get(String string, s64 index) {
 }
 
 s64 str_indexOfChar(String string, char find) {
-    return str_indexOfCharAfterIndex(string, find, 0);
+    return str_indexOfCharAfter(string, find, 0);
 }
 
-s64 str_indexOfString(String string, String find) {
-    return str_indexOfStringAfterIndex(string, find, 0);
+s64 str_indexOfStr(String string, String find) {
+    return str_indexOfStrAfter(string, find, 0);
 }
 
-s64 str_indexOfCharAfterIndex(String string, char find, s64 index) {
+s64 str_indexOfC(String string, char * find) {
+    return str_indexOfStrAfter(string, str_create(find), 0);
+}
+
+s64 str_indexOfCharAfter(String string, char find, s64 index) {
     if(str_isErrored(string) || index < 0)
         return -2;
 
@@ -550,7 +599,7 @@ s64 str_indexOfCharAfterIndex(String string, char find, s64 index) {
     return -1;
 }
 
-s64 str_indexOfStringAfterIndex(String string, String find, s64 index) {
+s64 str_indexOfStrAfter(String string, String find, s64 index) {
     if(str_isErrored(string) || str_isErrored(find) || index < 0)
         return -2;
 
@@ -559,8 +608,6 @@ s64 str_indexOfStringAfterIndex(String string, String find, s64 index) {
     if(find.length == 0)
         return -1;
 
-
-    // TODO : This is a pretty naive method
     String checkString;
     checkString.length = find.length;
 
@@ -573,6 +620,10 @@ s64 str_indexOfStringAfterIndex(String string, String find, s64 index) {
     }
 
     return -1;
+}
+
+s64 str_indexOfCAfter(String string, char * find, s64 index) {
+    return str_indexOfStrAfter(string, str_create(find), index);
 }
 
 s64 str_lastIndexOfChar(String string, char find) {
@@ -589,7 +640,7 @@ s64 str_lastIndexOfChar(String string, char find) {
     return -1;
 }
 
-s64 str_lastIndexOfString(String string, String find) {
+s64 str_lastIndexOfStr(String string, String find) {
     if(str_isErrored(string) || str_isErrored(find))
         return -2;
 
@@ -614,16 +665,20 @@ s64 str_lastIndexOfString(String string, String find) {
     return -1;
 }
 
+s64 str_lastIndexOfC(String string, char * find) {
+    return str_lastIndexOfStr(string, str_create(find));
+}
+
 bool str_containsChar(String string, char find) {
     return str_indexOfChar(string, find) != -1;
 }
 
-bool str_contains(String string, String find) {
-    return str_indexOfString(string, find) != -1;
+bool str_containsStr(String string, String find) {
+    return str_indexOfStr(string, find) != -1;
 }
 
 bool str_containsC(String string, char * find) {
-    return str_contains(string, str_create(find));
+    return str_containsStr(string, str_create(find));
 }
 
 void str_toUppercase(String string) {
@@ -681,7 +736,7 @@ void str_replaceChar(String string, char find, char replacement) {
     }
 }
 
-String str_replaceString(String string, String find, String replacement) {
+String str_replaceStr(String string, String find, String replacement) {
     if(str_isErrored(string) || str_isErrored(find) || str_isErrored(replacement))
         return str_createErrored(ERROR_ARG_INVALID, 0);
 
@@ -690,7 +745,7 @@ String str_replaceString(String string, String find, String replacement) {
     s64 lastIndex = 0;
     s64 index;
 
-    while((index = str_indexOfStringAfterIndex(string, find, lastIndex)) >= 0) {
+    while((index = str_indexOfStrAfter(string, find, lastIndex)) >= 0) {
         strbuilder_appendSubstring(&builder, string, lastIndex, index);
         strbuilder_append(&builder, replacement);
 
@@ -703,11 +758,11 @@ String str_replaceString(String string, String find, String replacement) {
     return builder.string;
 }
 
-String str_replaceCString(String string, char * find, char * replacement) {
-    return str_replaceString(string, str_create(find), str_create(replacement));
+String str_replaceC(String string, char * find, char * replacement) {
+    return str_replaceStr(string, str_create(find), str_create(replacement));
 }
 
-String str_replaceStringInPlace(String string, String find, String replacement) {
+String str_replaceStrInPlace(String string, String find, String replacement) {
     if(str_isErrored(string) || str_isErrored(find) || str_isErrored(replacement))
         return str_createErrored(ERROR_ARG_INVALID, 0);
     if(replacement.length > find.length)
@@ -716,7 +771,7 @@ String str_replaceStringInPlace(String string, String find, String replacement) 
     if(find.length == replacement.length) {
         s64 index = 0;
 
-        while((index = str_indexOfStringAfterIndex(string, find, index)) >= 0) {
+        while((index = str_indexOfStrAfter(string, find, index)) >= 0) {
             str_setChars(string, index, replacement);
             index += replacement.length;
         }
@@ -731,7 +786,7 @@ String str_replaceStringInPlace(String string, String find, String replacement) 
         s64 copyFromIndex = 0;
         s64 findIndex;
 
-        while((findIndex = str_indexOfStringAfterIndex(string, find, copyFromIndex)) >= 0) {
+        while((findIndex = str_indexOfStrAfter(string, find, copyFromIndex)) >= 0) {
             if(copyFromIndex > 0) {
                 String copyBack = str_substring(string, copyFromIndex, findIndex);
 
@@ -761,8 +816,8 @@ String str_replaceStringInPlace(String string, String find, String replacement) 
     }
 }
 
-String str_replaceCStringInPlace(String string, char * find, char * replacement) {
-    return str_replaceStringInPlace(string, str_create(find), str_create(replacement));
+String str_replaceCInPlace(String string, char * find, char * replacement) {
+    return str_replaceStrInPlace(string, str_create(find), str_create(replacement));
 }
 
 void str_reverse(String string) {
@@ -854,7 +909,7 @@ String str_trimTrailing(String string) {
     return str_substring(string, 0, end);
 }
 
-String str_split(String * remaining, s64 index, s64 delimiterLength) {
+String str_splitAt(String * remaining, s64 index, s64 delimiterLength) {
     if(str_isErrored(*remaining))
         return *remaining;
 
@@ -876,26 +931,26 @@ String str_split(String * remaining, s64 index, s64 delimiterLength) {
     return splitPart;
 }
 
-String str_splitCh(String * remaining, char find) {
+String str_splitAtChar(String * remaining, char find) {
     if(str_isErrored(*remaining))
         return *remaining;
 
     s64 index = str_indexOfChar(*remaining, find);
 
-    return str_split(remaining, index, 1);
+    return str_splitAt(remaining, index, 1);
 }
 
-String str_splitStr(String * remaining, String delimiter) {
+String str_splitAtStr(String * remaining, String delimiter) {
     if(str_isErrored(*remaining))
         return *remaining;
 
-    s64 index = str_indexOfString(*remaining, delimiter);
+    s64 index = str_indexOfStr(*remaining, delimiter);
 
-    return str_split(remaining, index, delimiter.length);
+    return str_splitAt(remaining, index, delimiter.length);
 }
 
-String str_splitC(String * remaining, char * delimiter) {
-    return str_splitStr(remaining, str_create(delimiter));
+String str_splitAtC(String * remaining, char * delimiter) {
+    return str_splitAtStr(remaining, str_create(delimiter));
 }
 
 
@@ -1719,23 +1774,29 @@ String err_reason(s64 error_s64) {
     CLibErrorType errorType = err_type(error_s64);
     int errnum = err_num(error_s64);
 
-    if (errnum == 0) {
-        if (errorType == ERROR_INVALID) {
-            return str_format("%s %d", errtype_c(ERROR_INVALID), error_s64);
-        }
-
-        return str_copy(errtype_str(errorType));
-    }
-
+    String message;
     if (errorType == ERROR_INVALID) {
-        return str_format("%s %d (%s)", errtype_c(ERROR_INVALID), error_s64, strerror(errnum));
+        message = str_format("%s %d", errtype_c(ERROR_INVALID), error_s64);
+    } else {
+        message = str_copy(errtype_str(errorType));
     }
 
-    return str_format("%s (%s)", errtype_c(errorType), strerror(errnum));
+    if (errnum == 0)
+        return message;
+
+    char * cstr = str_c(message);
+    String detailed = str_format("%s (%s)", cstr, strerror(errnum));
+
+    str_destroy(&message);
+    free(cstr);
+
+    return detailed;
 }
 
 CLibErrorType err_type(s64 error_s64) {
-    if (error_s64 >= 0 || !can_cast_s64_to_u64(-(error_s64 + 1)))
+    if (error_s64 >= 0)
+        return ERROR_NONE;
+    if (!can_cast_s64_to_u64(-(error_s64 + 1)))
         return ERROR_INVALID;
 
     u64 error_bits = (u64) (-(error_s64 + 1));

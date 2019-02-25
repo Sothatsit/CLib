@@ -33,13 +33,13 @@
 // Asserts
 //
 
-/*
+/*!
  * Print the location of where this macro is used.
  */
 #define printErrorLocation() \
     printf(ERROR " : " YELLOW "line %d" RESET " in " YELLOW __FILE__ RESET "\n", __LINE__)
 
-/*
+/*!
  * Print an error to console.
  */
 #define error(message, ...)                        \
@@ -48,7 +48,7 @@
         printf(" " message "\n", ##__VA_ARGS__);   \
     } while(0)
 
-/*
+/*!
  * Assert {condition} is true, returning false from the current function if it is false.
  */
 #define assert(condition)        \
@@ -57,7 +57,7 @@
          return false;           \
     }} while(0)
 
-/*
+/*!
  * Assert {condition} is true, returning false from the current function and printing an error if it is false.
  */
 #define assertOrError(condition, message, ...)   \
@@ -66,11 +66,15 @@
          return false;                           \
     }} while(0)
 
-/*
+/*!
  * Assert {pointer} is not NULL.
  */
-#define assertNonNull(pointer) assertOrError(pointer != NULL, #pointer " is unexpectedly null")
+#define assertNonNull(pointer) assertOrError((pointer) != NULL, #pointer " is unexpectedly null")
 
+/*!
+ * Assert that {errorType} is ERROR_SUCCESS.
+ */
+#define assertSuccess(errorType) assert((errorType) == ERROR_SUCCESS)
 
 
 //

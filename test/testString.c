@@ -409,7 +409,7 @@ bool test_str_containsChar() {
     return true;
 }
 
-bool test_str_containsString() {
+bool test_str_contains() {
     String jeff = str_createCopyOfLength("Jeff\0Bob", 8);
     String bob = str_createCopy("Bob");
     String jess = str_createCopy("Jess");
@@ -422,11 +422,11 @@ bool test_str_containsString() {
         assertStrValid(withNull);
         assertStrValid(differentAfterNull);
 
-        assert(!str_containsString(jeff, jess));
-        assert(str_containsString(jeff, bob));
-        assert(!str_containsString(bob, jeff));
-        assert(str_containsString(jeff, withNull));
-        assert(!str_containsString(jeff, differentAfterNull));
+        assert(!str_contains(jeff, jess));
+        assert(str_contains(jeff, bob));
+        assert(!str_contains(bob, jeff));
+        assert(str_contains(jeff, withNull));
+        assert(!str_contains(jeff, differentAfterNull));
     }
     str_destroy(&jeff);
     str_destroy(&bob);
@@ -884,7 +884,7 @@ void test_String(int * failures, int * successes) {
     test(str_lastIndexOfChar);
     test(str_lastIndexOfString);
     test(str_containsChar);
-    test(str_containsString);
+    test(str_contains);
 
     test(str_toUppercase);
     test(str_toLowercase);

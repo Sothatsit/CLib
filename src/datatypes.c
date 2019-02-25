@@ -11,6 +11,9 @@
 char * CLibErrorTypeStrings[ERROR_COUNT] = {
     "ERROR_SUCCESS: Success",
 
+    "ERROR_UNKNOWN: Unknown error",
+    "ERROR_INVALID: Invalid error type",
+
     "ERROR_FREED: Resource has been free'd",
     "ERROR_STRING_EXHAUSTED: String has been exhausted",
 
@@ -25,7 +28,9 @@ char * CLibErrorTypeStrings[ERROR_COUNT] = {
     "ERROR_FILE_SEEK: Error seeking in file",
     "ERROR_FILE_TELL: Error telling the location in file",
     "ERROR_FILE_READ: Error reading file",
-    "ERROR_FILE_CLOSE: Error closing file"
+    "ERROR_FILE_CLOSE: Error closing file",
+
+    "ERROR_INVALID_CODEPOINT: Invalid codepoint"
 };
 
 
@@ -613,8 +618,12 @@ bool str_containsChar(String string, char find) {
     return str_indexOfChar(string, find) != -1;
 }
 
-bool str_containsString(String string, String find) {
+bool str_contains(String string, String find) {
     return str_indexOfString(string, find) != -1;
+}
+
+bool str_containsC(String string, char * find) {
+    return str_contains(string, str_create(find));
 }
 
 void str_toUppercase(String string) {
@@ -678,10 +687,6 @@ String str_replaceString(String string, String find, String replacement) {
 
     StringBuilder builder = strbuilder_create(string.length);
 
-    // TODO : This should be calling a strbuilder function
-    if(builder.capacity == 0)
-        return str_createEmpty();
-
     s64 lastIndex = 0;
     s64 index;
 
@@ -694,10 +699,6 @@ String str_replaceString(String string, String find, String replacement) {
 
     strbuilder_appendSubstring(&builder, string, lastIndex, string.length);
     strbuilder_trimToLength(&builder);
-
-    // TODO : And this too
-    if(builder.capacity == 0)
-        return str_createEmpty();
 
     return builder.string;
 }
@@ -968,123 +969,135 @@ StringBuilder strbuilder_create(s64 initialSize) {
     return builder;
 }
 
-StringBuilder strbuilder_createInvalid() {
-    return strbuilder_create(-1);
+StringBuilder strbuilder_createErrored(CLibErrorType errorType, int errnum) {
+    return strbuilder_create(err_create(errorType, errnum));
 }
 
-bool strbuilder_isInvalid(StringBuilder builder) {
-    return builder.capacity < 0;
+bool strbuilder_isErrored(StringBuilder builder) {
+    return builder.capacity < 0 || str_isErrored(builder.string);
+}
+
+bool strbuilder_isValid(StringBuilder builder) {
+    return !strbuilder_isErrored(builder);
 }
 
 void strbuilder_destroy(StringBuilder * builder) {
-    if(strbuilder_isInvalid(*builder))
+    if(strbuilder_isErrored(*builder))
         return;
 
     str_destroy(&builder->string);
-    *builder = strbuilder_createInvalid();
+    *builder = strbuilder_createErrored(ERROR_FREED, 0);
 }
 
-String strbuilder_getStringCopy(StringBuilder builder) {
+String strbuilder_getCopy(StringBuilder builder) {
     return str_copy(builder.string);
 }
 
-bool strbuilder_setCapacity(StringBuilder * builder, s64 capacity) {
-    if(strbuilder_isInvalid(*builder))
-        return false;
+CLibErrorType strbuilder_setCapacity(StringBuilder * builder, s64 capacity) {
+    if(strbuilder_isErrored(*builder))
+        return err_type(builder->capacity);
 
-    if(builder->string.length > capacity)
-        return false;
+    if(builder->string.length > capacity) {
+        *builder = strbuilder_createErrored(ERROR_ARG_INVALID, 0);
+        return ERROR_ARG_INVALID;
+    }
 
     if(builder->capacity == capacity)
-        return true;
+        return ERROR_SUCCESS;
 
     if(capacity == 0) {
-        str_destroy(&builder->string);
+        strbuilder_destroy(builder);
         builder->string = str_createEmpty();
         builder->capacity = 0;
-        return true;
+        return ERROR_SUCCESS;
     }
 
     if(builder->capacity == 0) {
         builder->string = str_createUninitialised(capacity);
+        builder->capacity = builder->string.length;
         if(str_isErrored(builder->string))
-            return false;
+            return err_type(builder->string.length);
 
         builder->string.length = 0;
-        builder->capacity = capacity;
-        return true;
+        return ERROR_SUCCESS;
     }
 
-    if(!can_cast_s64_to_sizet(capacity))
-        return false;
+    if(!can_cast_s64_to_sizet(capacity)) {
+        *builder = strbuilder_createErrored(ERROR_CAST, 0);
+        return ERROR_CAST;
+    }
 
     builder->string.data = realloc(builder->string.data, (size_t) capacity);
     builder->capacity = capacity;
 
     if(builder->string.data == NULL) {
-        *builder = strbuilder_createInvalid();
-        return false;
+        *builder = strbuilder_createErrored(ERROR_ALLOC, errno);
+        return ERROR_ALLOC;
     }
 
-    return true;
+    return ERROR_SUCCESS;
 }
 
-bool strbuilder_ensureCapacity(StringBuilder * builder, s64 requiredCapacity) {
-    if(strbuilder_isInvalid(*builder))
-        return false;
+CLibErrorType strbuilder_ensureCapacity(StringBuilder * builder, s64 requiredCapacity) {
+    if(strbuilder_isErrored(*builder))
+        return err_type(builder->capacity);
     if(requiredCapacity <= builder->capacity)
-        return true;
+        return ERROR_SUCCESS;
 
     s64 newCapacity = s64_nextPowerOf2(requiredCapacity);
 
     return strbuilder_setCapacity(builder, newCapacity);
 }
 
-bool strbuilder_trimToLength(StringBuilder * builder) {
-    if(strbuilder_isInvalid(*builder))
-        return false;
+CLibErrorType strbuilder_trimToLength(StringBuilder * builder) {
+    if(strbuilder_isErrored(*builder))
+        return err_type(builder->capacity);
 
     return strbuilder_setCapacity(builder, builder->string.length);
 }
 
-bool strbuilder_appendChar(StringBuilder * builder, char character) {
-    if(strbuilder_isInvalid(*builder))
-        return false;
+CLibErrorType strbuilder_appendChar(StringBuilder * builder, char character) {
+    if(strbuilder_isErrored(*builder))
+        return err_type(builder->capacity);
 
     s64 requiredCapacity = builder->string.length + 1;
-    if(!strbuilder_ensureCapacity(builder, requiredCapacity))
-        return false;
+    CLibErrorType result = strbuilder_ensureCapacity(builder, requiredCapacity);
+    if(result != ERROR_SUCCESS)
+        return result;
 
     s64 end = builder->string.length;
     builder->string.length += 1;
     str_set(builder->string, end, character);
 
-    return true;
+    return ERROR_SUCCESS;
 }
 
-bool strbuilder_append(StringBuilder * builder, String string) {
-    if(strbuilder_isInvalid(*builder) || str_isErrored(string))
-        return false;
+CLibErrorType strbuilder_append(StringBuilder * builder, String string) {
+    if(strbuilder_isErrored(*builder))
+        return err_type(builder->capacity);
+    if(str_isErrored(string))
+        return err_type(string.length);
 
     if(string.length == 0)
-        return true;
+        return ERROR_SUCCESS;
 
     s64 requiredCapacity = builder->string.length + string.length;
-    if(!strbuilder_ensureCapacity(builder, requiredCapacity))
-        return false;
+    CLibErrorType result = strbuilder_ensureCapacity(builder, requiredCapacity);
+    if(result != ERROR_SUCCESS)
+        return result;
 
     s64 end = builder->string.length;
     builder->string.length += string.length;
     str_setChars(builder->string, end, string);
 
-    return true;
+    return ERROR_SUCCESS;
 }
 
-bool strbuilder_appendC(StringBuilder * builder, char * string) {
+CLibErrorType strbuilder_appendC(StringBuilder * builder, char * string) {
     return strbuilder_append(builder, str_create(string));
 }
 
-bool strbuilder_appendSubstring(StringBuilder * builder, String string, s64 start, s64 end) {
+CLibErrorType strbuilder_appendSubstring(StringBuilder * builder, String string, s64 start, s64 end) {
     return strbuilder_append(builder, str_substring(string, start, end));
 }
 
@@ -1192,93 +1205,73 @@ u32 utf8_toCodepoint(String * remaining) {
 String utf8_fromCodepoint(u32 codepoint) {
     StringBuilder builder = strbuilder_create(4);
 
-    if(!utf8_appendCodepoint(&builder, codepoint)) {
-        strbuilder_destroy(&builder);
-        return str_createEmpty();
-    }
+    utf8_appendCodepoint(&builder, codepoint);
 
     return builder.string;
 }
 
-bool utf8_appendCodepoint(StringBuilder *builder, u32 codepoint) {
-    bool res = true;
-
-    if((codepoint & 0x80000000) != 0) {
-        // Invalid codepoint.
-        return false;
-    }
+CLibErrorType utf8_appendCodepoint(StringBuilder *builder, u32 codepoint) {
+    if((codepoint & 0x80000000) != 0)
+        return ERROR_INVALID_CODEPOINT;
 
     // If the codepoint can fit into 7 bits.
     if(codepoint <= 0x007F) {
         // 0xxxxxxx
-
-        res = res && strbuilder_appendChar(builder, (char) codepoint);
-
-        return res;
+        return strbuilder_appendChar(builder, (char) codepoint);
     }
 
     // If the codepoint can fit into 11 bits.
     if(codepoint <= 0x07FF) {
         // 110xxxxx 10xxxxxx
 
-        res = res && strbuilder_appendChar(builder, (char) (0xC0 | (codepoint >> 6)));
-        res = res && strbuilder_appendChar(builder, (char) (0x80 | (codepoint & 0x3F)));
-
-        return res;
+        strbuilder_appendChar(builder, (char) (0xC0 | (codepoint >> 6)));
+        return strbuilder_appendChar(builder, (char) (0x80 | (codepoint & 0x3F)));
     }
 
     // If the codepoint can fit into 16 bits.
     if(codepoint <= 0xFFFF) {
         // 1110xxxx 10xxxxxx 10xxxxxx
 
-        res = res && strbuilder_appendChar(builder, (char) (0xE0 | (codepoint >> 12)));
-        res = res && strbuilder_appendChar(builder, (char) (0x80 | ((codepoint >> 6) & 0x3F)));
-        res = res && strbuilder_appendChar(builder, (char) (0x80 | (codepoint & 0x3F)));
-
-        return res;
+        strbuilder_appendChar(builder, (char) (0xE0 | (codepoint >> 12)));
+        strbuilder_appendChar(builder, (char) (0x80 | ((codepoint >> 6) & 0x3F)));
+        return strbuilder_appendChar(builder, (char) (0x80 | (codepoint & 0x3F)));
     }
 
     // If the codepoint can fit into 21 bits.
     if(codepoint <= 0x001FFFFF) {
         // 11110xxx 10xxxxxx 10xxxxxx 10xxxxxx
 
-        res = res && strbuilder_appendChar(builder, (char) (0xF0 | (codepoint >> 18)));
-        res = res && strbuilder_appendChar(builder, (char) (0x80 | ((codepoint >> 12) & 0x3F)));
-        res = res && strbuilder_appendChar(builder, (char) (0x80 | ((codepoint >> 6) & 0x3F)));
-        res = res && strbuilder_appendChar(builder, (char) (0x80 | (codepoint & 0x3F)));
-
-        return res;
+        strbuilder_appendChar(builder, (char) (0xF0 | (codepoint >> 18)));
+        strbuilder_appendChar(builder, (char) (0x80 | ((codepoint >> 12) & 0x3F)));
+        strbuilder_appendChar(builder, (char) (0x80 | ((codepoint >> 6) & 0x3F)));
+        return strbuilder_appendChar(builder, (char) (0x80 | (codepoint & 0x3F)));
     }
 
     // If the codepoint can fit into 26 bits.
     if(codepoint <= 0x03FFFFFF) {
         // 111110xx 10xxxxxx 10xxxxxx 10xxxxxx 10xxxxxx
 
-        res = res && strbuilder_appendChar(builder, (char) (0xF8 | (codepoint >> 24)));
-        res = res && strbuilder_appendChar(builder, (char) (0x80 | ((codepoint >> 18) & 0x3F)));
-        res = res && strbuilder_appendChar(builder, (char) (0x80 | ((codepoint >> 12) & 0x3F)));
-        res = res && strbuilder_appendChar(builder, (char) (0x80 | ((codepoint >> 6) & 0x3F)));
-        res = res && strbuilder_appendChar(builder, (char) (0x80 | (codepoint & 0x3F)));
-
-        return res;
+        strbuilder_appendChar(builder, (char) (0xF8 | (codepoint >> 24)));
+        strbuilder_appendChar(builder, (char) (0x80 | ((codepoint >> 18) & 0x3F)));
+        strbuilder_appendChar(builder, (char) (0x80 | ((codepoint >> 12) & 0x3F)));
+        strbuilder_appendChar(builder, (char) (0x80 | ((codepoint >> 6) & 0x3F)));
+        return strbuilder_appendChar(builder, (char) (0x80 | (codepoint & 0x3F)));
     }
 
     // If the codepoint can fit into 31 bits.
     if(codepoint <= 0x7FFFFFFF) {
         // 1111110x 10xxxxxx 10xxxxxx 10xxxxxx 10xxxxxx 10xxxxxx
 
-        res = res && strbuilder_appendChar(builder, (char) (0xFC | (codepoint >> 30)));
-        res = res && strbuilder_appendChar(builder, (char) (0x80 | ((codepoint >> 24) & 0x3F)));
-        res = res && strbuilder_appendChar(builder, (char) (0x80 | ((codepoint >> 18) & 0x3F)));
-        res = res && strbuilder_appendChar(builder, (char) (0x80 | ((codepoint >> 12) & 0x3F)));
-        res = res && strbuilder_appendChar(builder, (char) (0x80 | ((codepoint >> 6) & 0x3F)));
-        res = res && strbuilder_appendChar(builder, (char) (0x80 | (codepoint & 0x3F)));
-
-        return res;
+        strbuilder_appendChar(builder, (char) (0xFC | (codepoint >> 30)));
+        strbuilder_appendChar(builder, (char) (0x80 | ((codepoint >> 24) & 0x3F)));
+        strbuilder_appendChar(builder, (char) (0x80 | ((codepoint >> 18) & 0x3F)));
+        strbuilder_appendChar(builder, (char) (0x80 | ((codepoint >> 12) & 0x3F)));
+        strbuilder_appendChar(builder, (char) (0x80 | ((codepoint >> 6) & 0x3F)));
+        return strbuilder_appendChar(builder, (char) (0x80 | (codepoint & 0x3F)));
     }
 
     // Invalid codepoint.
-    return false;
+    return ERROR_INVALID_CODEPOINT;
 }
 
 #define __utf16leToCodepoint_nextChar(remaining, next)                                   \
@@ -1322,25 +1315,24 @@ u32 utf16le_toCodepoint(String * remaining) {
 String utf16le_fromCodepoint(u32 codepoint) {
     StringBuilder builder = strbuilder_create(4);
 
-    if(!utf16le_appendCodepoint(&builder, codepoint)) {
-        strbuilder_destroy(&builder);
-        return str_createEmpty();
-    }
+    utf16le_appendCodepoint(&builder, codepoint);
 
     return builder.string;
 }
 
-#define __utf16leAppendCodepoint_append(builder, value)                       \
-    do {                                                                      \
-        const u8 low8bits = (1 << 8) - 1;                                     \
-        strbuilder_appendChar(builder, (char) ((value) & low8bits));          \
-        strbuilder_appendChar(builder, (char) (((value) >> 8) & low8bits));   \
+#define __utf16leAppendCodepoint_append(builder, value, res)                        \
+    do {                                                                            \
+        const u8 low8bits = (1 << 8) - 1;                                           \
+        res = strbuilder_appendChar(builder, (char) ((value) & low8bits));          \
+        res = strbuilder_appendChar(builder, (char) (((value) >> 8) & low8bits));   \
     } while(0);
 
-bool utf16le_appendCodepoint(StringBuilder * builder, u32 codepoint) {
+CLibErrorType utf16le_appendCodepoint(StringBuilder * builder, u32 codepoint) {
+    CLibErrorType res;
+
     if(codepoint < 0x10000) {
-        __utf16leAppendCodepoint_append(builder, (u16) codepoint);
-        return true;
+        __utf16leAppendCodepoint_append(builder, (u16) codepoint, res);
+        return res;
     }
 
     const u16 low10bits = (1 << 10) - 1;
@@ -1350,11 +1342,12 @@ bool utf16le_appendCodepoint(StringBuilder * builder, u32 codepoint) {
     u16 lo = (u16) 0xD800 | (u16) ((codepoint >> 10) & low10bits);
     u16 hi = (u16) 0xDC00 | (u16) (codepoint & low10bits);
 
-    __utf16leAppendCodepoint_append(builder, lo);
-    __utf16leAppendCodepoint_append(builder, hi);
-
-    return true;
+    __utf16leAppendCodepoint_append(builder, lo, res);
+    __utf16leAppendCodepoint_append(builder, hi, res);
+    return res;
 }
+
+#undef __utf16leAppendCodepoint_append
 
 
 
@@ -1701,8 +1694,9 @@ char * stack_appendData(Stack * stack, char * data, s64 length) {
 //
 
 char * errtype_c(CLibErrorType errorType) {
-    if (errorType >= ERROR_COUNT)
-        return "Invalid error";
+    if (errorType >= ERROR_COUNT) {
+        errorType = ERROR_UNKNOWN;
+    }
 
     return CLibErrorTypeStrings[errorType];
 }
@@ -1714,27 +1708,50 @@ String errtype_str(CLibErrorType errorType) {
 s64 err_create(CLibErrorType errorType, int errnum) {
     // 16 bits for the CLibError, 32 bits for the errnum
     if ((u64) errorType > 0xFFFF || errnum < 0 || errnum >= 0xFFFFFFFF)
-        return -1;
+        return -1 - ERROR_INVALID;
 
-    u64 num = errorType | (errnum >> 16);
+    u64 num = errorType | (errnum << 16);
 
     return -1 - num;
 }
 
 String err_reason(s64 error_s64) {
-    if (error_s64 >= 0)
-        return str_format("Invalid error %d", error_s64);
+    CLibErrorType errorType = err_type(error_s64);
+    int errnum = err_num(error_s64);
 
-    if (can_cast_s64_to_u64(-(error_s64 + 1)))
-        return str_format("Invalid error %d", error_s64);
+    if (errnum == 0) {
+        if (errorType == ERROR_INVALID) {
+            return str_format("%s %d", errtype_c(ERROR_INVALID), error_s64);
+        }
+
+        return str_copy(errtype_str(errorType));
+    }
+
+    if (errorType == ERROR_INVALID) {
+        return str_format("%s %d (%s)", errtype_c(ERROR_INVALID), error_s64, strerror(errnum));
+    }
+
+    return str_format("%s (%s)", errtype_c(errorType), strerror(errnum));
+}
+
+CLibErrorType err_type(s64 error_s64) {
+    if (error_s64 >= 0 || !can_cast_s64_to_u64(-(error_s64 + 1)))
+        return ERROR_INVALID;
 
     u64 error_bits = (u64) (-(error_s64 + 1));
 
-    CLibErrorType error = (CLibErrorType) (error_bits & 0xFFFF);
-    int errnum = (int) (error_bits << 16);
+    CLibErrorType errorType = (CLibErrorType) (error_bits & 0xFFFF);
+    if (errorType >= ERROR_COUNT)
+        return ERROR_INVALID;
 
-    if (errnum == 0)
-        return str_createCopy(errtype_c(error));
+    return errorType;
+}
 
-    return str_format("%s: %s", errtype_c(error), strerror(errnum));
+int err_num(s64 error_s64) {
+    if (error_s64 >= 0 || !can_cast_s64_to_u64(-(error_s64 + 1)))
+        return 0;
+
+    u64 error_bits = (u64) (-(error_s64 + 1));
+
+    return (int) ((error_bits >> 16) & 0xFFFFFFFF);
 }

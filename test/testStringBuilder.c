@@ -39,7 +39,7 @@ bool test_strbuilder_getStringCopy() {
         strbuilder_appendChar(&builder, ' ');
         strbuilder_appendC(&builder, "man");
 
-        builtString = strbuilder_getStringCopy(builder);
+        builtString = strbuilder_getCopy(builder);
 
         assert(str_equals(builtString, expected));
         assert(str_equals(builder.string, builtString));
@@ -57,14 +57,14 @@ bool test_strbuilder_setCapacity() {
     {
         assert(builder.capacity == 32);
 
-        assert(strbuilder_setCapacity(&builder, 24));
+        assertSuccess(strbuilder_setCapacity(&builder, 24));
         assert(builder.capacity == 24);
 
-        assert(strbuilder_setCapacity(&builder, 80));
+        assertSuccess(strbuilder_setCapacity(&builder, 80));
         assert(builder.capacity == 80);
 
-        assert(!strbuilder_setCapacity(&builder, 20));
-        assert(builder.capacity == 80);
+        assert(strbuilder_setCapacity(&builder, 20) != ERROR_SUCCESS);
+        assert(strbuilder_isErrored(builder));
     }
     strbuilder_destroy(&builder);
 
@@ -77,13 +77,13 @@ bool test_strbuilder_ensureCapacity() {
     {
         assert(builder.capacity == 32);
 
-        assert(strbuilder_ensureCapacity(&builder, 24));
+        assertSuccess(strbuilder_ensureCapacity(&builder, 24));
         assert(builder.capacity >= 24);
 
-        assert(strbuilder_ensureCapacity(&builder, 80));
+        assertSuccess(strbuilder_ensureCapacity(&builder, 80));
         assert(builder.capacity >= 80);
 
-        assert(strbuilder_ensureCapacity(&builder, 20));
+        assertSuccess(strbuilder_ensureCapacity(&builder, 20));
         assert(builder.capacity >= 20);
     }
     strbuilder_destroy(&builder);
@@ -97,12 +97,12 @@ bool test_strbuilder_trimToLength() {
     {
         assert(builder.capacity == 32);
 
-        assert(strbuilder_trimToLength(&builder));
+        assertSuccess(strbuilder_trimToLength(&builder));
         assert(builder.capacity == 24);
 
         strbuilder_appendC(&builder, "...");
 
-        assert(strbuilder_trimToLength(&builder));
+        assertSuccess(strbuilder_trimToLength(&builder));
         assert(builder.capacity == 27);
     }
     strbuilder_destroy(&builder);

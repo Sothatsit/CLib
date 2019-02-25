@@ -10,19 +10,21 @@
 bool test_utf8_toCodepoint() {
     StringBuilder utf8 = strbuilder_create(10);
     {
-        assert(strbuilder_appendChar(&utf8, (char) 0b00100100));
+        strbuilder_appendChar(&utf8, (char) 0b00100100);
 
-        assert(strbuilder_appendChar(&utf8, (char) 0b11000010));
-        assert(strbuilder_appendChar(&utf8, (char) 0b10100010));
+        strbuilder_appendChar(&utf8, (char) 0b11000010);
+        strbuilder_appendChar(&utf8, (char) 0b10100010);
 
-        assert(strbuilder_appendChar(&utf8, (char) 0b11100010));
-        assert(strbuilder_appendChar(&utf8, (char) 0b10000010));
-        assert(strbuilder_appendChar(&utf8, (char) 0b10101100));
+        strbuilder_appendChar(&utf8, (char) 0b11100010);
+        strbuilder_appendChar(&utf8, (char) 0b10000010);
+        strbuilder_appendChar(&utf8, (char) 0b10101100);
 
-        assert(strbuilder_appendChar(&utf8, (char) 0b11110000));
-        assert(strbuilder_appendChar(&utf8, (char) 0b10010000));
-        assert(strbuilder_appendChar(&utf8, (char) 0b10001101));
-        assert(strbuilder_appendChar(&utf8, (char) 0b10001000));
+        strbuilder_appendChar(&utf8, (char) 0b11110000);
+        strbuilder_appendChar(&utf8, (char) 0b10010000);
+        strbuilder_appendChar(&utf8, (char) 0b10001101);
+        strbuilder_appendChar(&utf8, (char) 0b10001000);
+
+        assert(strbuilder_isValid(utf8));
     }
 
     String remaining = utf8.string;
@@ -33,11 +35,13 @@ bool test_utf8_toCodepoint() {
     assert(utf8_toCodepoint(&remaining) == 0b000010000001101001000);
     assert(str_isEmpty(remaining));
 
+    strbuilder_destroy(&utf8);
     return true;
 }
 
 bool test_utf8_fromCodepoint() {
     String utf8 = str_createUninitialised(4);
+    assert(str_isValid(utf8));
 
     String fromCodepoint = utf8_fromCodepoint(0b0100100);
     {
@@ -88,27 +92,27 @@ bool test_utf8_fromCodepoint() {
 bool test_utf8_appendCodepoint() {
     StringBuilder expected = strbuilder_create(10);
     {
-        assert(strbuilder_appendChar(&expected, (char) 0b00100100));
+        assertSuccess(strbuilder_appendChar(&expected, (char) 0b00100100));
 
-        assert(strbuilder_appendChar(&expected, (char) 0b11000010));
-        assert(strbuilder_appendChar(&expected, (char) 0b10100010));
+        assertSuccess(strbuilder_appendChar(&expected, (char) 0b11000010));
+        assertSuccess(strbuilder_appendChar(&expected, (char) 0b10100010));
 
-        assert(strbuilder_appendChar(&expected, (char) 0b11100010));
-        assert(strbuilder_appendChar(&expected, (char) 0b10000010));
-        assert(strbuilder_appendChar(&expected, (char) 0b10101100));
+        assertSuccess(strbuilder_appendChar(&expected, (char) 0b11100010));
+        assertSuccess(strbuilder_appendChar(&expected, (char) 0b10000010));
+        assertSuccess(strbuilder_appendChar(&expected, (char) 0b10101100));
 
-        assert(strbuilder_appendChar(&expected, (char) 0b11110000));
-        assert(strbuilder_appendChar(&expected, (char) 0b10010000));
-        assert(strbuilder_appendChar(&expected, (char) 0b10001101));
-        assert(strbuilder_appendChar(&expected, (char) 0b10001000));
+        assertSuccess(strbuilder_appendChar(&expected, (char) 0b11110000));
+        assertSuccess(strbuilder_appendChar(&expected, (char) 0b10010000));
+        assertSuccess(strbuilder_appendChar(&expected, (char) 0b10001101));
+        assertSuccess(strbuilder_appendChar(&expected, (char) 0b10001000));
     }
 
     StringBuilder fromCodepoints = strbuilder_create(10);
     {
-        assert(utf8_appendCodepoint(&fromCodepoints, 0b0100100));
-        assert(utf8_appendCodepoint(&fromCodepoints, 0b00010100010));
-        assert(utf8_appendCodepoint(&fromCodepoints, 0b0010000010101100));
-        assert(utf8_appendCodepoint(&fromCodepoints, 0b000010000001101001000));
+        assertSuccess(utf8_appendCodepoint(&fromCodepoints, 0b0100100));
+        assertSuccess(utf8_appendCodepoint(&fromCodepoints, 0b00010100010));
+        assertSuccess(utf8_appendCodepoint(&fromCodepoints, 0b0010000010101100));
+        assertSuccess(utf8_appendCodepoint(&fromCodepoints, 0b000010000001101001000));
     }
 
     assert(str_equals(expected.string, fromCodepoints.string));
@@ -119,26 +123,26 @@ bool test_utf8_appendCodepoint() {
 bool test_utf16le_toCodepoint() {
     StringBuilder utf16 = strbuilder_create(16);
     {
-        assert(strbuilder_appendChar(&utf16, (char) 0x7A));
-        assert(strbuilder_appendChar(&utf16, (char) 0x00));
+        assertSuccess(strbuilder_appendChar(&utf16, (char) 0x7A));
+        assertSuccess(strbuilder_appendChar(&utf16, (char) 0x00));
 
-        assert(strbuilder_appendChar(&utf16, (char) 0x34));
-        assert(strbuilder_appendChar(&utf16, (char) 0x6C));
+        assertSuccess(strbuilder_appendChar(&utf16, (char) 0x34));
+        assertSuccess(strbuilder_appendChar(&utf16, (char) 0x6C));
 
-        assert(strbuilder_appendChar(&utf16, (char) 0x00));
-        assert(strbuilder_appendChar(&utf16, (char) 0xD8));
-        assert(strbuilder_appendChar(&utf16, (char) 0x00));
-        assert(strbuilder_appendChar(&utf16, (char) 0xDC));
+        assertSuccess(strbuilder_appendChar(&utf16, (char) 0x00));
+        assertSuccess(strbuilder_appendChar(&utf16, (char) 0xD8));
+        assertSuccess(strbuilder_appendChar(&utf16, (char) 0x00));
+        assertSuccess(strbuilder_appendChar(&utf16, (char) 0xDC));
 
-        assert(strbuilder_appendChar(&utf16, (char) 0x34));
-        assert(strbuilder_appendChar(&utf16, (char) 0xD8));
-        assert(strbuilder_appendChar(&utf16, (char) 0x1E));
-        assert(strbuilder_appendChar(&utf16, (char) 0xDD));
+        assertSuccess(strbuilder_appendChar(&utf16, (char) 0x34));
+        assertSuccess(strbuilder_appendChar(&utf16, (char) 0xD8));
+        assertSuccess(strbuilder_appendChar(&utf16, (char) 0x1E));
+        assertSuccess(strbuilder_appendChar(&utf16, (char) 0xDD));
 
-        assert(strbuilder_appendChar(&utf16, (char) 0xFF));
-        assert(strbuilder_appendChar(&utf16, (char) 0xDB));
-        assert(strbuilder_appendChar(&utf16, (char) 0xFD));
-        assert(strbuilder_appendChar(&utf16, (char) 0xDF));
+        assertSuccess(strbuilder_appendChar(&utf16, (char) 0xFF));
+        assertSuccess(strbuilder_appendChar(&utf16, (char) 0xDB));
+        assertSuccess(strbuilder_appendChar(&utf16, (char) 0xFD));
+        assertSuccess(strbuilder_appendChar(&utf16, (char) 0xDF));
     }
 
     String remaining = utf16.string;
@@ -219,35 +223,35 @@ bool test_utf16le_fromCodepoint() {
 bool test_utf16le_appendCodepoint() {
     StringBuilder expected = strbuilder_create(16);
     {
-        assert(strbuilder_appendChar(&expected, (char) 0x7A));
-        assert(strbuilder_appendChar(&expected, (char) 0x00));
+        assertSuccess(strbuilder_appendChar(&expected, (char) 0x7A));
+        assertSuccess(strbuilder_appendChar(&expected, (char) 0x00));
 
-        assert(strbuilder_appendChar(&expected, (char) 0x34));
-        assert(strbuilder_appendChar(&expected, (char) 0x6C));
+        assertSuccess(strbuilder_appendChar(&expected, (char) 0x34));
+        assertSuccess(strbuilder_appendChar(&expected, (char) 0x6C));
 
-        assert(strbuilder_appendChar(&expected, (char) 0x00));
-        assert(strbuilder_appendChar(&expected, (char) 0xD8));
-        assert(strbuilder_appendChar(&expected, (char) 0x00));
-        assert(strbuilder_appendChar(&expected, (char) 0xDC));
+        assertSuccess(strbuilder_appendChar(&expected, (char) 0x00));
+        assertSuccess(strbuilder_appendChar(&expected, (char) 0xD8));
+        assertSuccess(strbuilder_appendChar(&expected, (char) 0x00));
+        assertSuccess(strbuilder_appendChar(&expected, (char) 0xDC));
 
-        assert(strbuilder_appendChar(&expected, (char) 0x34));
-        assert(strbuilder_appendChar(&expected, (char) 0xD8));
-        assert(strbuilder_appendChar(&expected, (char) 0x1E));
-        assert(strbuilder_appendChar(&expected, (char) 0xDD));
+        assertSuccess(strbuilder_appendChar(&expected, (char) 0x34));
+        assertSuccess(strbuilder_appendChar(&expected, (char) 0xD8));
+        assertSuccess(strbuilder_appendChar(&expected, (char) 0x1E));
+        assertSuccess(strbuilder_appendChar(&expected, (char) 0xDD));
 
-        assert(strbuilder_appendChar(&expected, (char) 0xFF));
-        assert(strbuilder_appendChar(&expected, (char) 0xDB));
-        assert(strbuilder_appendChar(&expected, (char) 0xFD));
-        assert(strbuilder_appendChar(&expected, (char) 0xDF));
+        assertSuccess(strbuilder_appendChar(&expected, (char) 0xFF));
+        assertSuccess(strbuilder_appendChar(&expected, (char) 0xDB));
+        assertSuccess(strbuilder_appendChar(&expected, (char) 0xFD));
+        assertSuccess(strbuilder_appendChar(&expected, (char) 0xDF));
     }
 
     StringBuilder fromCodepoints = strbuilder_create(16);
     {
-        assert(utf16le_appendCodepoint(&fromCodepoints, 0x007A));
-        assert(utf16le_appendCodepoint(&fromCodepoints, 0x6C34));
-        assert(utf16le_appendCodepoint(&fromCodepoints, 0x10000));
-        assert(utf16le_appendCodepoint(&fromCodepoints, 0x1D11E));
-        assert(utf16le_appendCodepoint(&fromCodepoints, 0x10FFFD));
+        assertSuccess(utf16le_appendCodepoint(&fromCodepoints, 0x007A));
+        assertSuccess(utf16le_appendCodepoint(&fromCodepoints, 0x6C34));
+        assertSuccess(utf16le_appendCodepoint(&fromCodepoints, 0x10000));
+        assertSuccess(utf16le_appendCodepoint(&fromCodepoints, 0x1D11E));
+        assertSuccess(utf16le_appendCodepoint(&fromCodepoints, 0x10FFFD));
     }
 
     assert(str_equals(expected.string, fromCodepoints.string));

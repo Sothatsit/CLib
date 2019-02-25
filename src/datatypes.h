@@ -32,6 +32,9 @@ typedef enum {
 
     ERROR_SUCCESS,
 
+    ERROR_UNKNOWN,
+    ERROR_INVALID,
+
     ERROR_FREED,
     ERROR_STRING_EXHAUSTED,
 
@@ -47,6 +50,8 @@ typedef enum {
     ERROR_FILE_TELL,
     ERROR_FILE_READ,
     ERROR_FILE_CLOSE,
+
+    ERROR_INVALID_CODEPOINT,
 
     ERROR_COUNT
 
@@ -502,7 +507,12 @@ bool str_containsChar(String string, char find);
 /*!
  * Check whether {string} contains {find}.
  */
-bool str_containsString(String string, String find);
+bool str_contains(String string, String find);
+
+/*!
+ * Check whether {string} contains the null-terminated string {find}.
+ */
+bool str_containsC(String string, char * find);
 
 /*!
  * Modifies all the characters in {string} to make them uppercase as defined by char_toUppercase.
@@ -719,12 +729,17 @@ StringBuilder strbuilder_create(s64 initialSize);
 /*!
  * Creates a StringBuilder that is in an errored state.
  */
-StringBuilder strbuilder_createInvalid();
+StringBuilder strbuilder_createErrored(CLibErrorType errorType, int errnum);
 
 /*!
  * Returns whether {builder} is in an errored state.
  */
-bool strbuilder_isInvalid(StringBuilder builder);
+bool strbuilder_isErrored(StringBuilder builder);
+
+/*!
+ * Returns whether {builder} is a valid StringBuilder.
+ */
+bool strbuilder_isValid(StringBuilder builder);
 
 /*!
  * Destroy {builder}.
@@ -736,14 +751,14 @@ void strbuilder_destroy(StringBuilder * builder);
 /*!
  * Returns a copy of the String in {builder}.
  */
-String strbuilder_getStringCopy(StringBuilder builder);
+String strbuilder_getCopy(StringBuilder builder);
 
 /*!
  * Sets the capacity of {builder} to {capacity}.
  *
  * Returns whether setting the capacity was successful.
  */
-bool strbuilder_setCapacity(StringBuilder * builder, s64 capacity);
+CLibErrorType strbuilder_setCapacity(StringBuilder * builder, s64 capacity);
 
 /*!
  * If {requiredCapacity} is greater than the current capacity of {builder}, the
@@ -751,40 +766,40 @@ bool strbuilder_setCapacity(StringBuilder * builder, s64 capacity);
  *
  * Returns whether it was able to ensure that {builder} has a capacity of at least {requiredCapacity}.
  */
-bool strbuilder_ensureCapacity(StringBuilder * builder, s64 requiredCapacity);
+CLibErrorType strbuilder_ensureCapacity(StringBuilder * builder, s64 requiredCapacity);
 
 /*!
  * Attempts to reduce the capacity of {builder} so it is equal to the length of its contents.
  *
  * Returns whether reducing the capacity to its length was successful.
  */
-bool strbuilder_trimToLength(StringBuilder * builder);
+CLibErrorType strbuilder_trimToLength(StringBuilder * builder);
 
 /*!
  * Will append {character} to {builder}.
  *
  * Returns whether appending {character} was succesful.
  */
-bool strbuilder_appendChar(StringBuilder * builder, char character);
+CLibErrorType strbuilder_appendChar(StringBuilder * builder, char character);
 
 /*!
  * Will append {string} to {builder}.
  *
  * Returns whether appending {string} was successful.
  */
-bool strbuilder_append(StringBuilder * builder, String string);
+CLibErrorType strbuilder_append(StringBuilder * builder, String string);
 
 /*!
  * Will append {string} to {builder}.
  *
  * Returns whether appending {string} was successful.
  */
-bool strbuilder_appendC(StringBuilder * builder, char * string);
+CLibErrorType strbuilder_appendC(StringBuilder * builder, char * string);
 
 /*!
  * Will append a substring of {string} between {start} and {end} to {builder}.
  */
-bool strbuilder_appendSubstring(StringBuilder * builder, String string, s64 start, s64 end);
+CLibErrorType strbuilder_appendSubstring(StringBuilder * builder, String string, s64 start, s64 end);
 
 
 
@@ -823,7 +838,7 @@ String utf8_fromCodepoint(u32 codepoint);
  *
  * Returns whether it was successful.
  */
-bool utf8_appendCodepoint(StringBuilder * builder, u32 codepoint);
+CLibErrorType utf8_appendCodepoint(StringBuilder * builder, u32 codepoint);
 
 /*!
  * Read a Unicode codepoint from the start of the UTF-16LE String {remaining}, modifiying
@@ -845,7 +860,7 @@ String utf16le_fromCodepoint(u32 codepoint);
  *
  * Returns whether it was successful.
  */
-bool utf16le_appendCodepoint(StringBuilder * builder, u32 codepoint);
+CLibErrorType utf16le_appendCodepoint(StringBuilder * builder, u32 codepoint);
 
 
 
@@ -1195,6 +1210,16 @@ s64 err_create(CLibErrorType errorType, int errnum);
  * The resultant String should be free'd after use.
  */
 String err_reason(s64 error_s64);
+
+/*!
+ * Get the CLibErrorType of {error}.
+ */
+CLibErrorType err_type(s64 error_s64);
+
+/*!
+ * Get the errnum of {error}.
+ */
+int err_num(s64 error_s64);
 
 
 

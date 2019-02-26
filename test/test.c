@@ -5,7 +5,6 @@
 #include "testStringBuilder.h"
 #include "testUTF.h"
 #include "testBuffer.h"
-#include "testStack.h"
 #include "testErrors.h"
 #include "testExamples.h"
 
@@ -16,7 +15,6 @@ void test_all(int * failures, int * successes) {
     test_StringBuilder(failures, successes);
     test_UTF(failures, successes);
     test_Buffer(failures, successes);
-    test_Stack(failures, successes);
     test_errors(failures, successes);
     test_examples(failures, successes);
 }

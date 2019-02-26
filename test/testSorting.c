@@ -18,7 +18,8 @@ typedef bool (*SortFn_u64)(u64 *, u64);
  * Test a u64 sorting method with a given test case.
  */
 bool test_u64_sortCase(char * sortName, SortFn_u64 sortFn, u64 * source, u64 * expected, u64 length) {
-    u64 * sorted = malloc(length * sizeof(u64)); {
+    u64 * sorted = malloc(length * sizeof(u64));
+    {
         assertNonNull(sorted);
         memcpy(sorted, source, length * sizeof(u64));
     }
@@ -30,15 +31,17 @@ bool test_u64_sortCase(char * sortName, SortFn_u64 sortFn, u64 * source, u64 * e
     if(matchesExpected)
         return true;
 
-    char * sourceString = str_c(arr_u64_toString(source, length));
-    char * sortedString = str_c(arr_u64_toString(sorted, length));
-    char * expectedString = str_c(arr_u64_toString(expected, length));
+// TODO : Make this error message print the arrays again
+//    char * sourceString = str_c(arr_u64_toString(source, length));
+//    char * sortedString = str_c(arr_u64_toString(sorted, length));
+//    char * expectedString = str_c(arr_u64_toString(expected, length));
 
-    error("%s did not produce the expected output\n"
-          BOLD "  Source:   " RESET "%s\n"
-          BOLD "  Sorted:   " RESET "%s\n"
-          BOLD "  Expected: " RESET "%s",
-          sortName, sourceString, sortedString, expectedString);
+    error("%s did not produce the expected output\n", sortName);
+//    error("%s did not produce the expected output\n"
+//          BOLD "  Source:   " RESET "%s\n"
+//          BOLD "  Sorted:   " RESET "%s\n"
+//          BOLD "  Expected: " RESET "%s",
+//          sortName, sourceString, sortedString, expectedString);
 
     return false;
 }

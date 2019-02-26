@@ -597,6 +597,16 @@ CLibErrorType str_set(String string, s64 index, char character);
 CLibErrorType str_setChars(String string, s64 index, String replacement);
 
 /*!
+ * Set the characters in {string} at {index} to the characters in {replacement}.
+ *
+ * This will modify {string}, if this is unwanted use str_copy beforehand.
+ *
+ * Will perform a bounds check to ensure that {replacement} will fit completely into {string}.
+ * Returns whether the operation was successful.
+ */
+CLibErrorType str_setCharsC(String string, s64 index, char * replacement);
+
+/*!
  * Replace all occurences of {find} in {string} with {replacement}.
  *
  * This will modify {string}, if this is unwanted use str_copy beforehand.
@@ -746,6 +756,107 @@ String str_readFile(char *filename);
 
 
 //
+// Buffers
+//
+
+/*!
+ * A fixed size buffer for storing arbritary data.
+ */
+typedef struct Buffer {
+    /*!
+     * Pointer to the start of the buffer.
+     */
+    char * start;
+
+    /*!
+     * The capacity in chars of the buffer.
+     */
+    s64 capacity;
+} Buffer;
+
+/*!
+ * Allocates a new Buffer with capacity {capacity}.
+ *
+ * Will return an empty Buffer on error or if {capacity} is 0.
+ */
+Buffer buf_create(s64 capacity);
+
+/*!
+ * Create an empty Buffer.
+ */
+Buffer buf_createEmpty();
+
+/*!
+ * Create a Buffer in an errored state.
+ */
+Buffer buf_createInvalid();
+
+/*!
+ * Create a new Buffer using the data at {start} with capacity {capacity}.
+ *
+ * Will return an empty Buffer if {start} is NULL or if {capacity} is 0.
+ */
+Buffer buf_createUsing(char * start, s64 capacity);
+
+/*!
+ * Check whether {buffer} is empty.
+ */
+bool buf_isEmpty(Buffer buffer);
+
+/*!
+ * Check whether {buffer} is usable and not in an errored state.
+ */
+bool buf_isValid(Buffer buffer);
+
+/*!
+ * Check whether {buffer} is in an errored state.
+ */
+bool buf_isInvalid(Buffer buffer);
+
+/*!
+ * Create a copy of {buffer}.
+ *
+ * Will return an empty Buffer on failure or if {buffer} is empty.
+ */
+Buffer buf_copy(Buffer buffer);
+
+/*!
+ * Copy the contents of {from} into the start of {to}.
+ *
+ * The Buffer {to} must have a capacity at least as large as {buffer}.
+ *
+ * Will return whether it was successful.
+ */
+bool buf_copyInto(Buffer from, Buffer to);
+
+/*!
+ * Destroy {buffer} and free its contents.
+ */
+void buf_destroy(Buffer * buffer);
+
+/*!
+ * Sets the capacity of {buffer} to {capacity}.
+ *
+ * Returns whether setting the capacity was successful.
+ */
+bool buf_setCapacity(Buffer * buffer, s64 capacity);
+
+/*!
+ * If {requiredCapacity} is greater than the current capacity of {buffer}, the
+ * capacity of {buffer} will be attempted to be increased to the next power of 2.
+ *
+ * Returns whether it was able to ensure that {buffer} has a capacity of at least {requiredCapacity}.
+ */
+bool buf_ensureCapacity(Buffer * buffer, s64 requiredCapacity);
+
+/*!
+ * Check that the contents of the buffers {buffer1} and {buffer2} are the same.
+ */
+bool buf_equals(Buffer buffer1, Buffer buffer2);
+
+
+
+//
 // String Builder
 //
 
@@ -855,17 +966,6 @@ CLibErrorType strbuilder_appendSubstring(StringBuilder * builder, String string,
 
 
 //
-// String conversions
-//
-
-/*!
- * Convert a u64 array into a String.
- */
-String arr_u64_toString(u64 * array, s64 length);
-
-
-
-//
 // Unicode
 //
 
@@ -912,323 +1012,6 @@ String utf16le_fromCodepoint(u32 codepoint);
  * Returns whether it was successful.
  */
 CLibErrorType utf16le_appendCodepoint(StringBuilder * builder, u32 codepoint);
-
-
-
-//
-// Buffers
-//
-
-/*!
- * A fixed size buffer for storing arbritary data.
- */
-typedef struct Buffer {
-    /*!
-     * Pointer to the start of the buffer.
-     */
-    char * start;
-
-    /*!
-     * The capacity in chars of the buffer.
-     */
-    s64 capacity;
-} Buffer;
-
-/*!
- * Allocates a new Buffer with capacity {capacity}.
- *
- * Will return an empty Buffer on error or if {capacity} is 0.
- */
-Buffer buffer_create(s64 capacity);
-
-/*!
- * Create an empty Buffer.
- */
-Buffer buffer_createEmpty();
-
-/*!
- * Create a Buffer in an errored state.
- */
-Buffer buffer_createInvalid();
-
-/*!
- * Create a new Buffer using the data at {start} with capacity {capacity}.
- *
- * Will return an empty Buffer if {start} is NULL or if {capacity} is 0.
- */
-Buffer buffer_createUsing(char * start, s64 capacity);
-
-/*!
- * Check whether {buffer} is empty.
- */
-bool buffer_isEmpty(Buffer buffer);
-
-/*!
- * Check whether {buffer} is usable and not in an errored state.
- */
-bool buffer_isValid(Buffer buffer);
-
-/*!
- * Check whether {buffer} is in an errored state.
- */
-bool buffer_isInvalid(Buffer buffer);
-
-/*!
- * Create a copy of {buffer}.
- *
- * Will return an empty Buffer on failure or if {buffer} is empty.
- */
-Buffer buffer_copy(Buffer buffer);
-
-/*!
- * Copy the contents of {from} into the start of {to}.
- *
- * The Buffer {to} must have a capacity at least as large as {buffer}.
- *
- * Will return whether it was successful.
- */
-bool buffer_copyInto(Buffer from, Buffer to);
-
-/*!
- * Destroy {buffer} and free its contents.
- */
-void buffer_destroy(Buffer * buffer);
-
-/*!
- * Sets the capacity of {buffer} to {capacity}.
- *
- * Returns whether setting the capacity was successful.
- */
-bool buffer_setCapacity(Buffer * buffer, s64 capacity);
-
-/*!
- * If {requiredCapacity} is greater than the current capacity of {buffer}, the
- * capacity of {buffer} will be attempted to be increased to the next power of 2.
- *
- * Returns whether it was able to ensure that {buffer} has a capacity of at least {requiredCapacity}.
- */
-bool buffer_ensureCapacity(Buffer * buffer, s64 requiredCapacity);
-
-/*!
- * Check that the contents of the buffers {buffer1} and {buffer2} are the same.
- */
-bool buffer_equals(Buffer buffer1, Buffer buffer2);
-
-
-
-//
-// Stacks
-//
-
-/*!
- * A stack of elements that can dynamically grow to accommodate more elements.
- *
- * Elements can be appended or popped from the stack.
- */
-typedef struct Stack {
-    /*!
-     * The buffer used to store the elements on the stack.
-     */
-    Buffer buffer;
-
-    /*!
-     * The number of chars currently being used in the buffer.
-     */
-    s64 used;
-} Stack;
-
-/*!
- * Creates a new Stack with an initial capacity of {initialCapacity} chars.
- *
- * Will return a Stack with capacity 0 on error or if {initialCapacity} is 0.
- */
-Stack stack_create(s64 initialCapacity);
-
-/*!
- * Check whether the underlying Buffer of {stack} is empty.
- */
-bool stack_isValid(Stack stack);
-
-/*!
- * Destroy {stack} and free its contents.
- */
-void stack_destroy(Stack * stack);
-
-/*!
- * Sets the capacity of {stack} to {capacity}.
- *
- * Will fail if {stack->used} is greater than {capacity}.
- *
- * Returns whether setting the capacity was successful.
- */
-bool stack_setCapacity(Stack * stack, s64 capacity);
-
-/*!
- * If {requiredCapacity} is greater than the current capacity of {stack}, the
- * capacity of {stack} will be attempted to be increased to the next power of 2.
- *
- * Returns whether it was able to ensure that {stack} has a capacity of at least {requiredCapacity}.
- */
-bool stack_ensureCapacity(Stack * stack, s64 requiredCapacity);
-
-/*!
- * Attempts to reduce the capacity of {stack} so it is equal to {stack->used}.
- *
- * Returns whether reducing the capacity to the used space was successful.
- */
-bool stack_trimToUsed(Stack * stack);
-
-/*!
- * Get a pointer to the end of {stack}.
- */
-#define stack_getEnd(stack) (&((stack).buffer.start)[(stack).used])
-
-/*!
- * Get a pointer to the last element of {stack}, or NULL if there are no elements on {stack}.
- */
-#define stack_peek(type, stack) \
-    ((type *) (stack.used >= sizeof(type) ? (void *) &((stack).buffer.start)[(stack).used - sizeof(type)] : NULL))
-
-/*!
- * Reserve {length} chars at the end of {stack}.
- *
- * Returns a pointer to the start of the reserved space.
- *
- * Will return NULL if it is unable to reserve {length} chars.
- */
-char * stack_reserve(Stack * stack, s64 length);
-
-/*!
- * Append {length} chars from {data} to {stack}.
- *
- * Returns a pointer to the start of the appended data.
- *
- * Will return NULL if it is unable to append {data}.
- */
-char * stack_appendData(Stack * stack, char * data, s64 length);
-
-/*!
- * Define functions to modify a Stack which contains data of type {type}.
- *
- * Append: {type} * stack_append{type}(Stack * stack, {type} value)
- *   Append a value of type {type} to {stack}.
- *
- * Pop: {type} * stack_pop{type}(Stack * stack)
- *   Pop a value of type {type} off the top of the stack.
- *
- *
- * to append {value} of type {type} to {stack}
- */
-#define stack_defineTypedFunctions(type)   \
-    stack_defineTypedCreate(type)          \
-    stack_defineTypedAppend(type);         \
-    stack_defineTypedAppendMany(type);     \
-    stack_defineTypedPopMany(type);        \
-    stack_defineTypedPop(type)
-
-/*!
- * Define a function to create a stack of type {type} with
- * initial capacity {initialCapacity} elements of type {type}.
- *
- * The signature of the function is:
- *    static Stack * stack_createOf{type}(s64 initialCapacity)
- *
- * e.g. For Buffer
- *    static Stack * stack_createOfBuffer(s64 initialCapacity)
- *
- * Creates a new Stack with an inital capacity of {intialCapacity} elements of type {type}.
- *
- * Will return a Stack with capacity 0 on error or if {intialCapacity} is 0.
- */
-#define stack_defineTypedCreate(type)                          \
-    static Stack stack_createOf##type(s64 initialCapacity) {   \
-        return stack_create(initialCapacity * sizeof(type));   \
-    }
-
-/*!
- * Define a function to append the value {value} of type {type} to {stack}.
- *
- * The signature of the function is:
- *    static {type} * stack_append{type}(Stack * stack, {type} value)
- *
- * e.g. For Buffer
- *    static Buffer * stack_appendBuffer(Stack * stack, Buffer value)
- *
- * Returns a pointer to the appended element.
- *
- * Will return NULL if it is unable to append the value.
- */
-#define stack_defineTypedAppend(type)                                  \
-    static type * stack_append##type(Stack * stack, type value) {      \
-        if(!stack_ensureCapacity(stack, stack->used + sizeof(type)))   \
-            return NULL;                                               \
-                                                                       \
-        type * end = (type *) stack_getEnd(*stack);                    \
-        *end = value;                                                  \
-                                                                       \
-        stack->used += sizeof(type);                                   \
-                                                                       \
-        return end;                                                    \
-    }
-
-/*!
- * Define a function to append {count} values from {data} of type {type} to {stack}.
- *
- * The signature of the function is:
- *    static {type} * stack_appendMany{type}(Stack * stack, {type} * data, s64 count)
- *
- * e.g. For Buffer
- *    static Buffer * stack_appendManyBuffer(Stack * stack, Buffer * data, s64 count)
- *
- * Returns a pointer to the bottom most appended element.
- *
- * Will return NULL if it is unable to append the values.
- */
-#define stack_defineTypedAppendMany(type)                                               \
-    static type * stack_appendMany##type(Stack * stack, type * data, s64 count) {       \
-        return (type *) stack_appendData(stack, (char *) data, count * sizeof(type));   \
-    }
-
-/*!
- * Define a function to pop the top value of type {type} from {stack}.
- *
- * The signature of the function is:
- *    static {type} * stack_pop{type}(Stack * stack)
- *
- *  e.g. For Buffer
- *     static Buffer * stack_popBuffer(Stack * stack)
- *
- *  Returns a pointer to the element that was popped from {stack}.
- *
- *  Will return NULL if there are no elements on {stack}.
- */
-#define stack_defineTypedPop(type)                     \
-    static type * stack_pop##type(Stack * stack) {     \
-        return stack_popMany##type(stack, 1);          \
-    }
-
-/*!
- * Define a function to pop {count} values of type {type} from {stack}.
- *
- * The signature of the function is:
- *    static {type} * stack_popMany{type}(Stack * stack, s64 count)
- *
- * e.g. For Buffer
- *    static Buffer * stack_popManyBuffer(Stack * stack, s64 count)
- *
- * Returns a pointer to the bottom-most element that was popped from {stack}.
- *
- * Will return NULL if there are not {count} values on {stack}.
- */
-#define stack_defineTypedPopMany(type)                              \
-    static type * stack_popMany##type(Stack * stack, s64 count) {   \
-        if(stack->used < count * sizeof(type))                      \
-            return NULL;                                            \
-                                                                    \
-        stack->used -= count * sizeof(type);                        \
-                                                                    \
-        return (type *) stack_getEnd(*stack);                       \
-    }
 
 
 

@@ -325,6 +325,8 @@ bool test_str_equals() {
     String jeff = str_createCopy("Jeff");
     String johnDoe = str_createCopyOfLength("John\0Doe", 8);
     String johnPaul = str_createCopyOfLength("John\0Paul", 9);
+    String empty = str_createEmpty();
+    String errored = str_createErrored(ERROR_UNKNOWN, 0);
     {
         assertStrValid(bob);
         assertStrValid(jeff);
@@ -335,11 +337,17 @@ bool test_str_equals() {
         assert(str_equals(bob, bob));
         assert(!str_equals(johnDoe, johnPaul));
         assert(!str_equals(johnPaul, johnDoe));
+        assert(str_equals(empty, str_create("")));
+        assert(!str_equals(empty, str_create(NULL)));
+        assert(!str_equals(empty, errored));
+        assert(!str_equals(errored, errored));
     }
     str_destroy(&bob);
     str_destroy(&jeff);
     str_destroy(&johnDoe);
     str_destroy(&johnPaul);
+    str_destroy(&empty);
+    str_destroy(&errored);
 
     return true;
 }
@@ -710,6 +718,24 @@ bool test_str_setChars() {
     str_destroy(&string);
     str_destroy(&jeff);
     str_destroy(&bob);
+    str_destroy(&expected);
+
+    return true;
+}
+
+bool test_str_setCharsC() {
+    String string = str_createCopy("Everybody likes strings");
+    String expected = str_createCopy("Ejeffbody likes bobings");
+    {
+        assertStrValid(string);
+        assertStrValid(expected);
+
+        str_setCharsC(string, 1, "jeff");
+        str_setCharsC(string, 16, "bob");
+
+        assert(str_equals(string, expected));
+    }
+    str_destroy(&string);
     str_destroy(&expected);
 
     return true;

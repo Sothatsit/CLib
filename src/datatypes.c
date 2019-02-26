@@ -725,6 +725,10 @@ CLibErrorType str_setChars(String string, s64 index, String replacement) {
     return ERROR_SUCCESS;
 }
 
+CLibErrorType str_setCharsC(String string, s64 index, char * replacement) {
+    return str_setChars(string, index, str_create(replacement));
+}
+
 void str_replaceChar(String string, char find, char replacement) {
     if(str_isErrored(string))
         return;
@@ -998,6 +1002,162 @@ String str_readFile(char * filename) {
     }
 
     return buffer;
+}
+
+
+
+//
+// Buffers
+//
+
+Buffer buf_create(s64 capacity) {
+    Buffer buffer;
+
+    if(capacity < 0) {
+        buffer.start = NULL;
+        buffer.capacity = capacity;
+
+        return buffer;
+    }
+
+    buffer.start = NULL;
+    buffer.capacity = 0;
+
+    if(!buf_setCapacity(&buffer, capacity))
+        return buf_createInvalid();
+
+    return buffer;
+}
+
+Buffer buf_createEmpty() {
+    return buf_create(0);
+}
+
+Buffer buf_createInvalid() {
+    return buf_create(-1);
+}
+
+Buffer buf_createUsing(char * start, s64 capacity) {
+    if(start == NULL || capacity <= 0)
+        return buf_createInvalid();
+
+    return (Buffer) {
+        .start = start,
+        .capacity = capacity
+    };
+}
+
+bool buf_isEmpty(Buffer buffer) {
+    return buffer.capacity == 0;
+}
+
+bool buf_isValid(Buffer buffer) {
+    return buffer.capacity >= 0;
+}
+
+bool buf_isInvalid(Buffer buffer) {
+    return !buf_isValid(buffer);
+}
+
+Buffer buf_copy(Buffer buffer) {
+    if(buf_isInvalid(buffer))
+        return buf_createInvalid();
+
+    if(buffer.capacity == 0)
+        return buf_createEmpty();
+
+    Buffer copy = buf_create(buffer.capacity);
+    if(buf_isInvalid(copy))
+        return buf_createInvalid();
+
+    if(!buf_copyInto(buffer, copy))
+        return buf_createInvalid();
+
+    return copy;
+}
+
+bool buf_copyInto(Buffer from, Buffer to) {
+    if(buf_isInvalid(from) || buf_isInvalid(to))
+        return false;
+
+    if(from.capacity > to.capacity)
+        return false;
+    if(from.capacity == 0)
+        return true;
+
+    memmove(to.start, from.start, from.capacity);
+    return true;
+}
+
+void buf_destroy(Buffer * buffer) {
+    if(buf_isInvalid(*buffer))
+        return;
+
+    if(buffer->start != NULL) {
+        free(buffer->start);
+    }
+
+    *buffer = buf_createInvalid();
+}
+
+bool buf_setCapacity(Buffer * buffer, s64 capacity) {
+    if(buf_isInvalid(*buffer))
+        return false;
+
+    if(buffer->capacity == capacity)
+        return true;
+
+    if(capacity == 0) {
+        buf_destroy(buffer);
+        *buffer = buf_createEmpty();
+        return true;
+    }
+
+    if(!can_cast_s64_to_sizet(capacity))
+        return false;
+
+    if(buffer->capacity == 0) {
+        buffer->start = malloc((size_t) capacity);
+    } else {
+        buffer->start = realloc(buffer->start, (size_t) capacity);
+    }
+
+    if(buffer->start == NULL) {
+        *buffer = buf_createInvalid();
+        return false;
+    }
+
+    buffer->capacity = capacity;
+    return true;
+}
+
+bool buf_ensureCapacity(Buffer * buffer, s64 requiredCapacity) {
+    if(buf_isInvalid(*buffer))
+        return false;
+
+    if(requiredCapacity <= buffer->capacity)
+        return true;
+
+    s64 newCapacity = s64_nextPowerOf2(requiredCapacity);
+    if(newCapacity == 0)
+        return false;
+
+    return buf_setCapacity(buffer, newCapacity);
+}
+
+bool buf_equals(Buffer buffer1, Buffer buffer2) {
+    if(buf_isInvalid(buffer1) || buf_isInvalid(buffer2))
+        return false;
+
+    if(buffer1.capacity != buffer2.capacity)
+        return false;
+    if(buffer1.capacity == 0)
+        return true;
+
+    if(!can_cast_s64_to_sizet(buffer1.capacity))
+        return false;
+
+    return memcmp(buffer1.start, buffer2.start, (size_t) buffer1.capacity) == 0;
 }
 
 
@@ -1403,344 +1563,6 @@ CLibErrorType utf16le_appendCodepoint(StringBuilder * builder, u32 codepoint) {
 }
 
 #undef __utf16leAppendCodepoint_append
-
-
-
-//
-// Arrays
-//
-
-// TODO : Should just use Buffer
-typedef struct Array {
-    void * data;
-    s64 length;
-
-    void * (*get)(void *, s64);
-} Array;
-
-void * arr_u64_get(void * data, s64 index) {
-    return &((u64 *) data)[index];
-}
-
-Array arr_u64_create(u64 * data, s64 length) {
-    Array array;
-
-    array.data = data;
-    array.length = length;
-    array.get = &arr_u64_get;
-
-    return array;
-}
-
-typedef struct Iterator Iterator;
-
-struct Iterator {
-    void * (*next)(Iterator *);
-};
-
-typedef struct ArrayIterator {
-    Iterator iterator;
-
-    Array array;
-    s64 index;
-} ArrayIterator;
-
-void * arr_iterator_next(Iterator * iterator) {
-    ArrayIterator * arrayIterator = (ArrayIterator *) iterator;
-
-    if(arrayIterator->index + 1 >= arrayIterator->array.length)
-        return NULL;
-
-    arrayIterator->index += 1;
-
-    return (*arrayIterator->array.get)(arrayIterator->array.data, arrayIterator->index);
-}
-
-ArrayIterator arr_iterator(Array array) {
-    ArrayIterator iterator;
-
-    iterator.iterator.next = arr_iterator_next;
-    iterator.array = array;
-    iterator.index = 0;
-
-    return iterator;
-}
-
-typedef void (*StrBuilderAppendFn)(StringBuilder *, void *);
-
-void strbuilder_join(StringBuilder * builder,
-                     Iterator * iterator,
-                     StrBuilderAppendFn appendValue,
-                     String seperator) {
-
-    void * current = (*iterator->next)(iterator);
-
-    if(NULL == current)
-        return;
-
-    (*appendValue)(builder, current);
-
-    while(NULL != (current = (*iterator->next)(iterator))) {
-        strbuilder_append(builder, seperator);
-
-        (*appendValue)(builder, current);
-    }
-}
-
-String arr_join(Iterator * iterator, StrBuilderAppendFn appendValue, String seperator) {
-    StringBuilder builder = strbuilder_create(32);
-
-    strbuilder_join(&builder, iterator, appendValue, seperator);
-
-    return builder.string;
-}
-
-String arr_toString(Iterator * iterator, StrBuilderAppendFn appendValue) {
-    StringBuilder builder = strbuilder_create(32);
-
-    strbuilder_appendC(&builder, "[");
-
-    strbuilder_join(&builder, iterator, appendValue, str_create(", "));
-
-    strbuilder_appendC(&builder, "]");
-
-    return builder.string;
-}
-
-void strbuilder_u64_append(StringBuilder * builder, void * number) {
-    String string = str_format("%llu", *((u64 *) number));
-
-    strbuilder_append(builder, string);
-
-    str_destroy(&string);
-}
-
-String arr_u64_toString(u64 * data, s64 length) {
-    Array array = arr_u64_create(data, length);
-    ArrayIterator iterator = arr_iterator(array);
-
-    return arr_toString(&iterator.iterator, &strbuilder_u64_append);
-}
-
-
-
-//
-// Buffers
-//
-
-Buffer buffer_create(s64 capacity) {
-    Buffer buffer;
-
-    if(capacity < 0) {
-        buffer.start = NULL;
-        buffer.capacity = capacity;
-
-        return buffer;
-    }
-
-    buffer.start = NULL;
-    buffer.capacity = 0;
-
-    if(!buffer_setCapacity(&buffer, capacity))
-        return buffer_createInvalid();
-
-    return buffer;
-}
-
-Buffer buffer_createEmpty() {
-    return buffer_create(0);
-}
-
-Buffer buffer_createInvalid() {
-    return buffer_create(-1);
-}
-
-Buffer buffer_createUsing(char * start, s64 capacity) {
-    if(start == NULL || capacity <= 0)
-        return buffer_createInvalid();
-
-    return (Buffer) {
-        .start = start,
-        .capacity = capacity
-    };
-}
-
-bool buffer_isEmpty(Buffer buffer) {
-    return buffer.capacity == 0;
-}
-
-bool buffer_isValid(Buffer buffer) {
-    return buffer.capacity >= 0;
-}
-
-bool buffer_isInvalid(Buffer buffer) {
-    return !buffer_isValid(buffer);
-}
-
-Buffer buffer_copy(Buffer buffer) {
-    if(buffer_isInvalid(buffer))
-        return buffer_createInvalid();
-
-    if(buffer.capacity == 0)
-        return buffer_createEmpty();
-
-    Buffer copy = buffer_create(buffer.capacity);
-    if(buffer_isInvalid(copy))
-        return buffer_createInvalid();
-
-    if(!buffer_copyInto(buffer, copy))
-        return buffer_createInvalid();
-
-    return copy;
-}
-
-bool buffer_copyInto(Buffer from, Buffer to) {
-    if(buffer_isInvalid(from) || buffer_isInvalid(to))
-        return false;
-
-    if(from.capacity > to.capacity)
-        return false;
-    if(from.capacity == 0)
-        return true;
-
-    memmove(to.start, from.start, from.capacity);
-    return true;
-}
-
-void buffer_destroy(Buffer * buffer) {
-    if(buffer_isInvalid(*buffer))
-        return;
-
-    if(buffer->start != NULL) {
-        free(buffer->start);
-    }
-
-    *buffer = buffer_createInvalid();
-}
-
-bool buffer_setCapacity(Buffer * buffer, s64 capacity) {
-    if(buffer_isInvalid(*buffer))
-        return false;
-
-    if(buffer->capacity == capacity)
-        return true;
-
-    if(capacity == 0) {
-        buffer_destroy(buffer);
-        *buffer = buffer_createEmpty();
-        return true;
-    }
-
-    if(!can_cast_s64_to_sizet(capacity))
-        return false;
-
-    if(buffer->capacity == 0) {
-        buffer->start = malloc((size_t) capacity);
-    } else {
-        buffer->start = realloc(buffer->start, (size_t) capacity);
-    }
-
-    if(buffer->start == NULL) {
-        *buffer = buffer_createInvalid();
-        return false;
-    }
-
-    buffer->capacity = capacity;
-    return true;
-}
-
-bool buffer_ensureCapacity(Buffer * buffer, s64 requiredCapacity) {
-    if(buffer_isInvalid(*buffer))
-        return false;
-
-    if(requiredCapacity <= buffer->capacity)
-        return true;
-
-    s64 newCapacity = s64_nextPowerOf2(requiredCapacity);
-    if(newCapacity == 0)
-        return false;
-
-    return buffer_setCapacity(buffer, newCapacity);
-}
-
-bool buffer_equals(Buffer buffer1, Buffer buffer2) {
-    if(buffer_isInvalid(buffer1) || buffer_isInvalid(buffer2))
-        return false;
-
-    if(buffer1.capacity != buffer2.capacity)
-        return false;
-    if(buffer1.capacity == 0)
-        return true;
-
-    if(!can_cast_s64_to_sizet(buffer1.capacity))
-        return false;
-
-    return memcmp(buffer1.start, buffer2.start, (size_t) buffer1.capacity) == 0;
-}
-
-
-
-//
-// Stacks
-//
-
-Stack stack_create(s64 initialCapacity) {
-    Stack stack;
-
-    if(initialCapacity < 0) {
-        stack.buffer = buffer_createInvalid();
-        stack.used = -1;
-        return stack;
-    }
-
-    stack.buffer = buffer_create(initialCapacity);
-    stack.used = 0;
-
-    return stack;
-}
-
-bool stack_isValid(Stack stack) {
-    return stack.used >= 0 && buffer_isValid(stack.buffer);
-}
-
-void stack_destroy(Stack * stack) {
-    buffer_destroy(&stack->buffer);
-    stack->used = 0;
-}
-
-bool stack_setCapacity(Stack * stack, s64 capacity) {
-    return buffer_setCapacity(&stack->buffer, capacity);
-}
-
-bool stack_ensureCapacity(Stack * stack, s64 requiredCapacity) {
-    return buffer_ensureCapacity(&stack->buffer, requiredCapacity);
-}
-
-bool stack_trimToUsed(Stack * stack) {
-    return stack_setCapacity(stack, stack->used);
-}
-
-char * stack_reserve(Stack * stack, s64 length) {
-    if(!stack_ensureCapacity(stack, stack->used + length))
-        return NULL;
-
-    char * end = stack_getEnd(*stack);
-
-    stack->used += length;
-
-    return end;
-}
-
-char * stack_appendData(Stack * stack, char * data, s64 length) {
-    char * start = stack_reserve(stack, length);
-
-    if(start == NULL)
-        return NULL;
-
-    memcpy(start, data, length);
-
-    return start;
-}
 
 
 

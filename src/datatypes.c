@@ -9,8 +9,9 @@
 //
 
 char * CLibErrorTypeStrings[ERROR_COUNT] = {
-    "ERROR_SUCCESS: Success",
     "ERROR_NONE: No error",
+
+    "ERROR_SUCCESS: Success",
     "ERROR_UNKNOWN: Unknown error",
     "ERROR_INVALID: Invalid error type",
 
@@ -23,6 +24,7 @@ char * CLibErrorTypeStrings[ERROR_COUNT] = {
     "ERROR_ALLOC: Error allocating memory",
     "ERROR_FORMAT: Error formatting string",
     "ERROR_CAST: Cannot cast number",
+    "ERROR_OVERFLOW: Number overflowed",
 
     "ERROR_FILE_OPEN: Error opening file",
     "ERROR_FILE_SEEK: Error seeking in file",
@@ -310,6 +312,191 @@ static void u64_merge(u64 * array, u64 * buffer, u64 left, u64 middle, u64 right
 
 
 //
+// Buffers
+//
+
+Buffer buf_create(s64 size) {
+    Buffer buffer;
+
+    if(size < 0) {
+        buffer.start = NULL;
+        buffer.size = size;
+
+        return buffer;
+    }
+
+    buffer.start = NULL;
+    buffer.size = 0;
+
+    buf_setCapacity(&buffer, size);
+
+    return buffer;
+}
+
+Buffer buf_createEmpty() {
+    return buf_create(0);
+}
+
+Buffer buf_createErrored(CLibErrorType errorType, int errnum) {
+    if(errorType == ERROR_NONE)
+        return buf_createErrored(ERROR_ARG_INVALID, 0);
+
+    return buf_create(err_create(errorType, errnum));
+}
+
+Buffer buf_createUsing(char * start, s64 size) {
+    if(start == NULL)
+        return buf_createErrored(ERROR_ARG_NULL, 0);
+    if(size <= 0)
+        return buf_createErrored(ERROR_NEG_LENGTH, 0);
+
+    return (Buffer) {
+        .start = start,
+        .size = size
+    };
+}
+
+bool buf_isEmpty(Buffer buffer) {
+    return buffer.size == 0;
+}
+
+bool buf_isValid(Buffer buffer) {
+    if (buffer.size > 0)
+        return buffer.start != NULL;
+
+    return buffer.size == 0;
+}
+
+bool buf_isErrored(Buffer buffer) {
+    return !buf_isValid(buffer);
+}
+
+CLibErrorType buf_getErrorType(Buffer buffer) {
+    if(!buf_isErrored(buffer))
+        return ERROR_NONE;
+
+    return err_type(buffer.size);
+}
+
+int buf_getErrorNum(Buffer buffer) {
+    if(!buf_isErrored(buffer))
+        return 0;
+
+    return err_num(buffer.size);
+}
+
+String buf_getErrorReason(Buffer buffer) {
+    return err_reason(buffer.size);
+}
+
+Buffer buf_copy(Buffer buffer) {
+    if(buf_isErrored(buffer))
+        return buffer;
+
+    if(buffer.size == 0)
+        return buf_createEmpty();
+
+    Buffer copy = buf_create(buffer.size);
+    if(buf_isErrored(copy))
+        return copy;
+
+    errno = 0;
+    CLibErrorType errorType = buf_copyInto(copy, buffer, 0);
+    if(errorType != ERROR_SUCCESS)
+        return buf_createErrored(errorType, errno);
+
+    return copy;
+}
+
+CLibErrorType buf_copyInto(Buffer destination, Buffer data, s64 index) {
+    if(buf_isErrored(destination) || buf_isErrored(data))
+        return ERROR_ARG_INVALID;
+    if(index < 0 || index + data.size > destination.size)
+        return ERROR_ARG_INVALID;
+
+    if(data.size == 0)
+        return ERROR_SUCCESS;
+
+    memmove(destination.start, data.start, data.size);
+    return ERROR_SUCCESS;
+}
+
+void buf_destroy(Buffer * buffer) {
+    if(buf_isErrored(*buffer))
+        return;
+
+    if(buffer->start != NULL) {
+        free(buffer->start);
+    }
+
+    *buffer = buf_createErrored(ERROR_FREED, 0);
+}
+
+CLibErrorType buf_setCapacity(Buffer * buffer, s64 size) {
+    if(buf_isErrored(*buffer))
+        return ERROR_ARG_INVALID;
+    if(buffer->size == size)
+        return ERROR_SUCCESS;
+
+    if(size == 0) {
+        buf_destroy(buffer);
+        *buffer = buf_createEmpty();
+        return ERROR_SUCCESS;
+    }
+
+    if(!can_cast_s64_to_sizet(size)) {
+        *buffer = buf_createErrored(ERROR_CAST, 0);
+        return ERROR_CAST;
+    }
+
+    if(buffer->size == 0) {
+        buffer->start = malloc((size_t) size);
+    } else {
+        buffer->start = realloc(buffer->start, (size_t) size);
+    }
+
+    if(buffer->start == NULL) {
+        *buffer = buf_createErrored(ERROR_ALLOC, errno);
+        return ERROR_ALLOC;
+    }
+
+    buffer->size = size;
+    return ERROR_SUCCESS;
+}
+
+CLibErrorType buf_ensureCapacity(Buffer * buffer, s64 requiredCapacity) {
+    if(buf_isErrored(*buffer))
+        return ERROR_ARG_INVALID;
+    if(requiredCapacity <= buffer->size)
+        return ERROR_SUCCESS;
+
+    s64 newCapacity = s64_nextPowerOf2(requiredCapacity);
+    if(newCapacity == 0) {
+        *buffer = buf_createErrored(ERROR_OVERFLOW, 0);
+        return ERROR_OVERFLOW;
+    }
+
+    return buf_setCapacity(buffer, newCapacity);
+}
+
+bool buf_equals(Buffer buffer1, Buffer buffer2) {
+    if(buf_isErrored(buffer1) || buf_isErrored(buffer2))
+        return false;
+
+    if(buffer1.size != buffer2.size)
+        return false;
+    if(buffer1.size == 0)
+        return true;
+
+    if(!can_cast_s64_to_sizet(buffer1.size))
+        return false;
+
+    return memcmp(buffer1.start, buffer2.start, (size_t) buffer1.size) == 0;
+}
+
+
+
+//
 // Strings
 //
 
@@ -380,6 +567,9 @@ String str_createUninitialised(s64 length) {
 }
 
 String str_createErrored(CLibErrorType errorType, int errnum) {
+    if(errorType == ERROR_NONE)
+        return str_createErrored(ERROR_ARG_INVALID, 0);
+
     return str_createOfLength(NULL, err_create(errorType, errnum));
 }
 
@@ -450,6 +640,15 @@ char * str_c(String string) {
     data[string.length] = '\0';
 
     return data;
+}
+
+char * str_c_destroy(String * string) {
+    // TODO : We should be able to re-use the data in string in some cases
+    char * cStr = str_c(*string);
+
+    str_destroy(string);
+
+    return cStr;
 }
 
 char * str_toCString(String string) {
@@ -759,7 +958,7 @@ String str_replaceStr(String string, String find, String replacement) {
     strbuilder_appendSubstring(&builder, string, lastIndex, string.length);
     strbuilder_trimToLength(&builder);
 
-    return builder.string;
+    return strbuilder_get(builder);
 }
 
 String str_replaceC(String string, char * find, char * replacement) {
@@ -1007,179 +1206,14 @@ String str_readFile(char * filename) {
 
 
 //
-// Buffers
-//
-
-Buffer buf_create(s64 capacity) {
-    Buffer buffer;
-
-    if(capacity < 0) {
-        buffer.start = NULL;
-        buffer.capacity = capacity;
-
-        return buffer;
-    }
-
-    buffer.start = NULL;
-    buffer.capacity = 0;
-
-    if(!buf_setCapacity(&buffer, capacity))
-        return buf_createInvalid();
-
-    return buffer;
-}
-
-Buffer buf_createEmpty() {
-    return buf_create(0);
-}
-
-Buffer buf_createInvalid() {
-    return buf_create(-1);
-}
-
-Buffer buf_createUsing(char * start, s64 capacity) {
-    if(start == NULL || capacity <= 0)
-        return buf_createInvalid();
-
-    return (Buffer) {
-        .start = start,
-        .capacity = capacity
-    };
-}
-
-bool buf_isEmpty(Buffer buffer) {
-    return buffer.capacity == 0;
-}
-
-bool buf_isValid(Buffer buffer) {
-    return buffer.capacity >= 0;
-}
-
-bool buf_isInvalid(Buffer buffer) {
-    return !buf_isValid(buffer);
-}
-
-Buffer buf_copy(Buffer buffer) {
-    if(buf_isInvalid(buffer))
-        return buf_createInvalid();
-
-    if(buffer.capacity == 0)
-        return buf_createEmpty();
-
-    Buffer copy = buf_create(buffer.capacity);
-    if(buf_isInvalid(copy))
-        return buf_createInvalid();
-
-    if(!buf_copyInto(buffer, copy))
-        return buf_createInvalid();
-
-    return copy;
-}
-
-bool buf_copyInto(Buffer from, Buffer to) {
-    if(buf_isInvalid(from) || buf_isInvalid(to))
-        return false;
-
-    if(from.capacity > to.capacity)
-        return false;
-    if(from.capacity == 0)
-        return true;
-
-    memmove(to.start, from.start, from.capacity);
-    return true;
-}
-
-void buf_destroy(Buffer * buffer) {
-    if(buf_isInvalid(*buffer))
-        return;
-
-    if(buffer->start != NULL) {
-        free(buffer->start);
-    }
-
-    *buffer = buf_createInvalid();
-}
-
-bool buf_setCapacity(Buffer * buffer, s64 capacity) {
-    if(buf_isInvalid(*buffer))
-        return false;
-
-    if(buffer->capacity == capacity)
-        return true;
-
-    if(capacity == 0) {
-        buf_destroy(buffer);
-        *buffer = buf_createEmpty();
-        return true;
-    }
-
-    if(!can_cast_s64_to_sizet(capacity))
-        return false;
-
-    if(buffer->capacity == 0) {
-        buffer->start = malloc((size_t) capacity);
-    } else {
-        buffer->start = realloc(buffer->start, (size_t) capacity);
-    }
-
-    if(buffer->start == NULL) {
-        *buffer = buf_createInvalid();
-        return false;
-    }
-
-    buffer->capacity = capacity;
-    return true;
-}
-
-bool buf_ensureCapacity(Buffer * buffer, s64 requiredCapacity) {
-    if(buf_isInvalid(*buffer))
-        return false;
-
-    if(requiredCapacity <= buffer->capacity)
-        return true;
-
-    s64 newCapacity = s64_nextPowerOf2(requiredCapacity);
-    if(newCapacity == 0)
-        return false;
-
-    return buf_setCapacity(buffer, newCapacity);
-}
-
-bool buf_equals(Buffer buffer1, Buffer buffer2) {
-    if(buf_isInvalid(buffer1) || buf_isInvalid(buffer2))
-        return false;
-
-    if(buffer1.capacity != buffer2.capacity)
-        return false;
-    if(buffer1.capacity == 0)
-        return true;
-
-    if(!can_cast_s64_to_sizet(buffer1.capacity))
-        return false;
-
-    return memcmp(buffer1.start, buffer2.start, (size_t) buffer1.capacity) == 0;
-}
-
-
-
-//
 // String Builder
 //
 
 StringBuilder strbuilder_create(s64 initialSize) {
     StringBuilder builder;
 
-    if(initialSize < 0) {
-        builder.string = str_createErrored(ERROR_NEG_LENGTH, 0);
-        builder.capacity = initialSize;
-
-        return builder;
-    }
-
-    builder.string = str_createEmpty();
-    builder.capacity = 0;
-
-    strbuilder_setCapacity(&builder, initialSize);
+    builder.buffer = buf_create(initialSize);
+    builder.length = 0;
 
     return builder;
 }
@@ -1189,7 +1223,7 @@ StringBuilder strbuilder_createErrored(CLibErrorType errorType, int errnum) {
 }
 
 bool strbuilder_isErrored(StringBuilder builder) {
-    return builder.capacity < 0 || str_isErrored(builder.string);
+    return buf_isErrored(builder.buffer);
 }
 
 bool strbuilder_isValid(StringBuilder builder) {
@@ -1200,110 +1234,77 @@ void strbuilder_destroy(StringBuilder * builder) {
     if(strbuilder_isErrored(*builder))
         return;
 
-    str_destroy(&builder->string);
+    buf_destroy(&builder->buffer);
     *builder = strbuilder_createErrored(ERROR_FREED, 0);
 }
 
+String strbuilder_get(StringBuilder builder) {
+    if(strbuilder_isErrored(builder)) {
+        CLibErrorType errorType = buf_getErrorType(builder.buffer);
+        int errnum = buf_getErrorNum(builder.buffer);
+        return str_createErrored(errorType, errnum);
+    }
+
+    return str_createOfLength(builder.buffer.start, builder.length);
+}
+
 String strbuilder_getCopy(StringBuilder builder) {
-    return str_copy(builder.string);
+    return str_copy(strbuilder_get(builder));
 }
 
 CLibErrorType strbuilder_setCapacity(StringBuilder * builder, s64 capacity) {
-    if(strbuilder_isErrored(*builder))
-        return err_type(builder->capacity);
-
-    if(builder->string.length > capacity) {
-        *builder = strbuilder_createErrored(ERROR_ARG_INVALID, 0);
+    if(capacity < builder->length) {
+        builder->buffer = buf_createErrored(ERROR_ARG_INVALID, 0);
         return ERROR_ARG_INVALID;
     }
 
-    if(builder->capacity == capacity)
-        return ERROR_SUCCESS;
-
-    if(capacity == 0) {
-        strbuilder_destroy(builder);
-        builder->string = str_createEmpty();
-        builder->capacity = 0;
-        return ERROR_SUCCESS;
-    }
-
-    if(builder->capacity == 0) {
-        builder->string = str_createUninitialised(capacity);
-        builder->capacity = builder->string.length;
-        if(str_isErrored(builder->string))
-            return err_type(builder->string.length);
-
-        builder->string.length = 0;
-        return ERROR_SUCCESS;
-    }
-
-    if(!can_cast_s64_to_sizet(capacity)) {
-        *builder = strbuilder_createErrored(ERROR_CAST, 0);
-        return ERROR_CAST;
-    }
-
-    builder->string.data = realloc(builder->string.data, (size_t) capacity);
-    builder->capacity = capacity;
-
-    if(builder->string.data == NULL) {
-        *builder = strbuilder_createErrored(ERROR_ALLOC, errno);
-        return ERROR_ALLOC;
-    }
-
-    return ERROR_SUCCESS;
+    return buf_setCapacity(&builder->buffer, capacity);
 }
 
 CLibErrorType strbuilder_ensureCapacity(StringBuilder * builder, s64 requiredCapacity) {
-    if(strbuilder_isErrored(*builder))
-        return err_type(builder->capacity);
-    if(requiredCapacity <= builder->capacity)
-        return ERROR_SUCCESS;
-
-    s64 newCapacity = s64_nextPowerOf2(requiredCapacity);
-
-    return strbuilder_setCapacity(builder, newCapacity);
+    return buf_ensureCapacity(&builder->buffer, requiredCapacity);
 }
 
 CLibErrorType strbuilder_trimToLength(StringBuilder * builder) {
     if(strbuilder_isErrored(*builder))
-        return err_type(builder->capacity);
+        return ERROR_ARG_INVALID;
 
-    return strbuilder_setCapacity(builder, builder->string.length);
+    return strbuilder_setCapacity(builder, builder->length);
 }
 
 CLibErrorType strbuilder_appendChar(StringBuilder * builder, char character) {
     if(strbuilder_isErrored(*builder))
-        return err_type(builder->capacity);
+        return ERROR_ARG_INVALID;
 
-    s64 requiredCapacity = builder->string.length + 1;
+    s64 requiredCapacity = builder->length + 1;
     CLibErrorType result = strbuilder_ensureCapacity(builder, requiredCapacity);
     if(result != ERROR_SUCCESS)
         return result;
 
-    s64 end = builder->string.length;
-    builder->string.length += 1;
-    str_set(builder->string, end, character);
+    s64 end = builder->length;
+    builder->length += 1;
+    builder->buffer.start[end] = character;
 
     return ERROR_SUCCESS;
 }
 
 CLibErrorType strbuilder_append(StringBuilder * builder, String string) {
     if(strbuilder_isErrored(*builder))
-        return err_type(builder->capacity);
+        return ERROR_ARG_INVALID;
     if(str_isErrored(string))
         return err_type(string.length);
 
     if(string.length == 0)
         return ERROR_SUCCESS;
 
-    s64 requiredCapacity = builder->string.length + string.length;
+    s64 requiredCapacity = builder->length + string.length;
     CLibErrorType result = strbuilder_ensureCapacity(builder, requiredCapacity);
     if(result != ERROR_SUCCESS)
         return result;
 
-    s64 end = builder->string.length;
-    builder->string.length += string.length;
-    str_setChars(builder->string, end, string);
+    s64 end = builder->length;
+    builder->length += string.length;
+    memcpy(&builder->buffer.start[end], string.data, string.length);
 
     return ERROR_SUCCESS;
 }
@@ -1422,7 +1423,7 @@ String utf8_fromCodepoint(u32 codepoint) {
 
     utf8_appendCodepoint(&builder, codepoint);
 
-    return builder.string;
+    return strbuilder_get(builder);
 }
 
 CLibErrorType utf8_appendCodepoint(StringBuilder *builder, u32 codepoint) {
@@ -1532,7 +1533,7 @@ String utf16le_fromCodepoint(u32 codepoint) {
 
     utf16le_appendCodepoint(&builder, codepoint);
 
-    return builder.string;
+    return strbuilder_get(builder);
 }
 
 #define __utf16leAppendCodepoint_append(builder, value, res)                        \
@@ -1589,7 +1590,7 @@ s64 err_create(CLibErrorType errorType, int errnum) {
 
     u64 num = errorType | (errnum << 16);
 
-    return -1 - num;
+    return (s64) (-num);
 }
 
 String err_reason(s64 error_s64) {
@@ -1618,10 +1619,10 @@ String err_reason(s64 error_s64) {
 CLibErrorType err_type(s64 error_s64) {
     if (error_s64 >= 0)
         return ERROR_NONE;
-    if (!can_cast_s64_to_u64(-(error_s64 + 1)))
+    if (!can_cast_s64_to_u64(-error_s64))
         return ERROR_INVALID;
 
-    u64 error_bits = (u64) (-(error_s64 + 1));
+    u64 error_bits = (u64) (-error_s64);
 
     CLibErrorType errorType = (CLibErrorType) (error_bits & 0xFFFF);
     if (errorType >= ERROR_COUNT)
@@ -1631,10 +1632,10 @@ CLibErrorType err_type(s64 error_s64) {
 }
 
 int err_num(s64 error_s64) {
-    if (error_s64 >= 0 || !can_cast_s64_to_u64(-(error_s64 + 1)))
+    if (error_s64 >= 0 || !can_cast_s64_to_u64(-error_s64))
         return 0;
 
-    u64 error_bits = (u64) (-(error_s64 + 1));
+    u64 error_bits = (u64) (-error_s64);
 
     return (int) ((error_bits >> 16) & 0xFFFFFFFF);
 }

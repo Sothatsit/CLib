@@ -27,7 +27,7 @@ bool test_utf8_toCodepoint() {
         assert(strbuilder_isValid(utf8));
     }
 
-    String remaining = utf8.string;
+    String remaining = strbuilder_get(utf8);
 
     assert(utf8_toCodepoint(&remaining) == 0b0100100);
     assert(utf8_toCodepoint(&remaining) == 0b00010100010);
@@ -115,7 +115,7 @@ bool test_utf8_appendCodepoint() {
         assertSuccess(utf8_appendCodepoint(&fromCodepoints, 0b000010000001101001000));
     }
 
-    assert(str_equals(expected.string, fromCodepoints.string));
+    assert(str_equals(strbuilder_get(expected), strbuilder_get(fromCodepoints)));
 
     return true;
 }
@@ -145,7 +145,7 @@ bool test_utf16le_toCodepoint() {
         assertSuccess(strbuilder_appendChar(&utf16, (char) 0xDF));
     }
 
-    String remaining = utf16.string;
+    String remaining = strbuilder_get(utf16);
 
     assert(utf16le_toCodepoint(&remaining) == 0x007A);
     assert(utf16le_toCodepoint(&remaining) == 0x6C34);
@@ -254,7 +254,7 @@ bool test_utf16le_appendCodepoint() {
         assertSuccess(utf16le_appendCodepoint(&fromCodepoints, 0x10FFFD));
     }
 
-    assert(str_equals(expected.string, fromCodepoints.string));
+    assert(str_equals(strbuilder_get(expected), strbuilder_get(fromCodepoints)));
 
     return true;
 }

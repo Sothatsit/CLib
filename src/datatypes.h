@@ -30,8 +30,9 @@
  */
 typedef enum {
 
-    ERROR_SUCCESS,
-    ERROR_NONE,
+    ERROR_NONE = 0,
+
+    ERROR_SUCCESS = 1,
     ERROR_UNKNOWN,
     ERROR_INVALID,
 
@@ -44,6 +45,7 @@ typedef enum {
     ERROR_ALLOC,
     ERROR_FORMAT,
     ERROR_CAST,
+    ERROR_OVERFLOW,
 
     ERROR_FILE_OPEN,
     ERROR_FILE_SEEK,
@@ -56,6 +58,9 @@ typedef enum {
     ERROR_COUNT
 
 } CLibErrorType;
+
+#define ERROR_FIRST ((CLibErrorType) 1)
+#define ERROR_LAST ((CLibErrorType) (ERROR_COUNT - 1))
 
 /*!
  * Strings describing each CLibErrorType.
@@ -294,8 +299,23 @@ void u64_mergeSort_withBuffer(u64 * array, u64 * buffer, u64 length);
 
 
 //
-// Strings
+// Buffer and String data structures
 //
+
+/*!
+ * A fixed size buffer for storing arbritary data.
+ */
+typedef struct Buffer {
+    /*!
+     * Pointer to the start of the buffer.
+     */
+    char * start;
+
+    /*!
+     * The total number of chars in the buffer.
+     */
+    s64 size;
+} Buffer;
 
 /*!
  * A blob of data of a set length of chars.
@@ -311,6 +331,115 @@ typedef struct String {
      */
     s64 length;
 } String;
+
+
+
+//
+// Buffers
+//
+
+/*!
+ * Allocates a new Buffer with capacity {capacity}.
+ *
+ * Will return an empty Buffer on error or if {capacity} is 0.
+ */
+Buffer buf_create(s64 capacity);
+
+/*!
+ * Create a new Buffer using the data at {start} with capacity {capacity}.
+ *
+ * Will return an empty Buffer if {start} is NULL or if {capacity} is 0.
+ */
+Buffer buf_createUsing(char * start, s64 capacity);
+
+/*!
+ * Create an empty Buffer.
+ */
+Buffer buf_createEmpty();
+
+/*!
+ * Create a Buffer in an errored state.
+ */
+Buffer buf_createErrored(CLibErrorType errorType, int errnum);
+
+/*!
+ * Check whether {buffer} is empty.
+ */
+bool buf_isEmpty(Buffer buffer);
+
+/*!
+ * Check whether {buffer} is usable and not in an errored state.
+ */
+bool buf_isValid(Buffer buffer);
+
+/*!
+ * Check whether {buffer} is in an errored state.
+ */
+bool buf_isErrored(Buffer buffer);
+
+/*!
+ * Get the CLibErrorType for the errored buffer {buffer}.
+ *
+ * Will return ERROR_NONE if {buffer} is not errored.
+ */
+CLibErrorType buf_getErrorType(Buffer buffer);
+
+/*!
+ * Get the errnum for the errored buffer {buffer}.
+ *
+ * Will return 0 if {buffer} is not errored.
+ */
+int buf_getErrorNum(Buffer buffer);
+
+/*!
+ * Returns a String containing the reason for the errored Buffer {buffer}.
+ */
+String buf_getErrorReason(Buffer buffer);
+
+/*!
+ * Create a copy of {buffer}.
+ *
+ * Will return an empty Buffer on failure or if {buffer} is empty.
+ */
+Buffer buf_copy(Buffer buffer);
+
+/*!
+ * Copy the contents of {data} into the {destination} starting from {index}.
+ *
+ * Will return whether it was successful.
+ */
+CLibErrorType buf_copyInto(Buffer destination, Buffer data, s64 index);
+
+/*!
+ * Destroy {buffer} and free its contents.
+ */
+void buf_destroy(Buffer * buffer);
+
+/*!
+ * Sets the capacity of {buffer} to {capacity}.
+ *
+ * Returns whether setting the capacity was successful.
+ */
+CLibErrorType buf_setCapacity(Buffer * buffer, s64 capacity);
+
+/*!
+ * If {requiredCapacity} is greater than the current capacity of {buffer}, the
+ * capacity of {buffer} will be attempted to be increased to the next power of 2.
+ *
+ * Returns whether it was able to ensure that {buffer} has a capacity of at least {requiredCapacity}.
+ */
+CLibErrorType buf_ensureCapacity(Buffer * buffer, s64 requiredCapacity);
+
+/*!
+ * Check that the contents of the buffers {buffer1} and {buffer2} are the same.
+ */
+bool buf_equals(Buffer buffer1, Buffer buffer2);
+
+
+
+//
+// Strings
+//
 
 /*!
  * Create a copy of {string}.
@@ -424,6 +553,13 @@ void str_destroy(String * string);
  * The returned null terminated string should be free'd.
  */
 char * str_c(String string);
+
+/*!
+ * Creates a null terminated version of {string}, and destroys {string}.
+ *
+ * The returned null terminated string should be free'd.
+ */
+char * str_c_destroy(String * string);
 
 /*!
  * An alias of str_c.
@@ -756,107 +892,6 @@ String str_readFile(char *filename);
 
 
 //
-// Buffers
-//
-
-/*!
- * A fixed size buffer for storing arbritary data.
- */
-typedef struct Buffer {
-    /*!
-     * Pointer to the start of the buffer.
-     */
-    char * start;
-
-    /*!
-     * The capacity in chars of the buffer.
-     */
-    s64 capacity;
-} Buffer;
-
-/*!
- * Allocates a new Buffer with capacity {capacity}.
- *
- * Will return an empty Buffer on error or if {capacity} is 0.
- */
-Buffer buf_create(s64 capacity);
-
-/*!
- * Create an empty Buffer.
- */
-Buffer buf_createEmpty();
-
-/*!
- * Create a Buffer in an errored state.
- */
-Buffer buf_createInvalid();
-
-/*!
- * Create a new Buffer using the data at {start} with capacity {capacity}.
- *
- * Will return an empty Buffer if {start} is NULL or if {capacity} is 0.
- */
-Buffer buf_createUsing(char * start, s64 capacity);
-
-/*!
- * Check whether {buffer} is empty.
- */
-bool buf_isEmpty(Buffer buffer);
-
-/*!
- * Check whether {buffer} is usable and not in an errored state.
- */
-bool buf_isValid(Buffer buffer);
-
-/*!
- * Check whether {buffer} is in an errored state.
- */
-bool buf_isInvalid(Buffer buffer);
-
-/*!
- * Create a copy of {buffer}.
- *
- * Will return an empty Buffer on failure or if {buffer} is empty.
- */
-Buffer buf_copy(Buffer buffer);
-
-/*!
- * Copy the contents of {from} into the start of {to}.
- *
- * The Buffer {to} must have a capacity at least as large as {buffer}.
- *
- * Will return whether it was successful.
- */
-bool buf_copyInto(Buffer from, Buffer to);
-
-/*!
- * Destroy {buffer} and free its contents.
- */
-void buf_destroy(Buffer * buffer);
-
-/*!
- * Sets the capacity of {buffer} to {capacity}.
- *
- * Returns whether setting the capacity was successful.
- */
-bool buf_setCapacity(Buffer * buffer, s64 capacity);
-
-/*!
- * If {requiredCapacity} is greater than the current capacity of {buffer}, the
- * capacity of {buffer} will be attempted to be increased to the next power of 2.
- *
- * Returns whether it was able to ensure that {buffer} has a capacity of at least {requiredCapacity}.
- */
-bool buf_ensureCapacity(Buffer * buffer, s64 requiredCapacity);
-
-/*!
- * Check that the contents of the buffers {buffer1} and {buffer2} are the same.
- */
-bool buf_equals(Buffer buffer1, Buffer buffer2);
-
-
-
-//
 // String Builder
 //
 
@@ -865,20 +900,14 @@ bool buf_equals(Buffer buffer1, Buffer buffer2);
  */
 typedef struct StringBuilder {
     /*!
-     * The underlying String that is being built.
-     *
-     * This String can be used from the StringBuilder at any time, and it or
-     * the StringBuilder should be destroyed after they are both not in use.
-     *
-     * If this String is taken from the StringBuilder, any
-     * appendages to the StringBuilder will not affect its value.
+     * The buffer to store the String as it is built.
      */
-    String string;
+    Buffer buffer;
 
     /*!
-     * The current capacity that the StringBuilder can hold before it has to expand.
+     * The length of the built string.
      */
-    s64 capacity;
+    s64 length;
 } StringBuilder;
 
 /*!
@@ -909,6 +938,11 @@ bool strbuilder_isValid(StringBuilder builder);
  * As {builder}->string and {builder} share the same data, only one of these should be destroyed.
  */
 void strbuilder_destroy(StringBuilder * builder);
+
+/*!
+ * Returns the String in {builder}.
+ */
+String strbuilder_get(StringBuilder builder);
 
 /*!
  * Returns a copy of the String in {builder}.
@@ -1034,7 +1068,8 @@ char * errtype_c(CLibErrorType errorType);
 String errtype_str(CLibErrorType errorType);
 
 /*!
- * Returns an s64 number <= -1, which contains the error and errnum.
+ * Returns an s64 number <= -1, which contains the error and errnum,
+ * unless ERROR_NONE is passed, in which case 0 will be returned.
  */
 s64 err_create(CLibErrorType errorType, int errnum);
 

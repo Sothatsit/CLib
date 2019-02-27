@@ -5,16 +5,16 @@
 // Tests
 //
 
-#define assertWritable(buffer)                                   \
-    do{ for(u64 index = 0; index < buffer.capacity; ++index) {   \
-        buffer.start[index] = (u8) index;                        \
+#define assertWritable(buffer)                               \
+    do{ for(u64 index = 0; index < buffer.size; ++index) {   \
+        buffer.start[index] = (u8) index;                    \
     }} while(0)
 
 bool test_buf_create() {
     Buffer buffer = buf_create(64);
     {
         assertNonNull(buffer.start);
-        assert(buffer.capacity == 64);
+        assert(buffer.size == 64);
         assertWritable(buffer);
     }
     buf_destroy(&buffer);
@@ -28,7 +28,7 @@ bool test_buf_createUsing() {
     Buffer buffer = buf_createUsing(data, 10);
     {
         assert(buffer.start == data);
-        assert(buffer.capacity == 10);
+        assert(buffer.size == 10);
     }
 
     return true;
@@ -38,11 +38,15 @@ bool test_buf_createEmpty() {
     Buffer buffer = buf_createEmpty();
     {
         assert(buffer.start == NULL);
-        assert(buffer.capacity == 0);
+        assert(buffer.size == 0);
     }
     buf_destroy(&buffer);
 
     return true;
+}
+
+bool test_buf_createErrored() {
+    return false;
 }
 
 bool test_buf_copy() {
@@ -64,21 +68,21 @@ bool test_buf_copyInto() {
     Buffer copyFrom = buf_createUsing("ABCDEFGHIJ", 10);
     Buffer copyTo = buf_create(10);
     {
-        assert(buf_copyInto(copyFrom, copyTo));
-        assert(buf_equals(copyFrom, copyTo));
+        assertSuccess(buf_copyInto(copyTo, copyFrom, 0));
+        assert(buf_equals(copyTo, copyFrom));
     }
     buf_destroy(&copyTo);
 
     copyTo = buf_create(20);
     {
-        assert(buf_copyInto(copyFrom, copyTo));
+        assertSuccess(buf_copyInto(copyTo, copyFrom, 0));
         assert(memcmp(copyFrom.start, copyTo.start, 10) == 0);
     }
     buf_destroy(&copyTo);
 
     copyTo = buf_create(5);
     {
-        assert(!buf_copyInto(copyFrom, copyTo));
+        assert(buf_copyInto(copyTo, copyFrom, 0) != ERROR_SUCCESS);
     }
     buf_destroy(&copyTo);
 
@@ -88,9 +92,87 @@ bool test_buf_copyInto() {
 bool test_buf_isEmpty() {
     Buffer empty = buf_createEmpty();
     Buffer nonEmpty = buf_createUsing("ABC", 3);
+    Buffer errored = buf_createErrored(ERROR_UNKNOWN, 0);
     {
         assert(buf_isEmpty(empty));
         assert(!buf_isEmpty(nonEmpty));
+        assert(!buf_isEmpty(errored));
+    }
+
+    return true;
+}
+
+bool test_buf_isValid() {
+    Buffer empty = buf_createEmpty();
+    Buffer nonEmpty = buf_createUsing("ABC", 3);
+    Buffer errored = buf_createErrored(ERROR_UNKNOWN, 0);
+    {
+        assert(buf_isValid(empty));
+        assert(buf_isValid(nonEmpty));
+        assert(!buf_isValid(errored));
+    }
+
+    return true;
+}
+
+bool test_buf_isErrored() {
+    assert(!buf_isErrored(buf_createUsing("ABC", 3)));
+    assert(!buf_isErrored(buf_createEmpty()));
+
+    for (CLibErrorType errorType = ERROR_FIRST; errorType <= ERROR_LAST; ++errorType) {
+        for (int errnum = 0; errnum < sys_nerr; ++errnum) {
+            Buffer errored = buf_createErrored(errorType, errnum);
+
+            assert(buf_isErrored(errored));
+        }
+    }
+
+    return true;
+}
+
+bool test_buf_getErrorType() {
+    assert(buf_getErrorType(buf_createUsing("ABC", 3)) == ERROR_NONE);
+    assert(buf_getErrorType(buf_createEmpty()) == ERROR_NONE);
+
+    for (CLibErrorType errorType = ERROR_FIRST; errorType <= ERROR_LAST; ++errorType) {
+        for (int errnum = 0; errnum < sys_nerr; ++errnum) {
+            Buffer errored = buf_createErrored(errorType, errnum);
+
+            assert(buf_getErrorType(errored) == errorType);
+        }
+    }
+
+    return true;
+}
+
+bool test_buf_getErrorNum() {
+    assert(buf_getErrorNum(buf_createUsing("ABC", 3)) == 0);
+    assert(buf_getErrorNum(buf_createEmpty()) == 0);
+
+    for (CLibErrorType errorType = ERROR_FIRST; errorType <= ERROR_LAST; ++errorType) {
+        for (int errnum = 0; errnum < sys_nerr; ++errnum) {
+            Buffer errored = buf_createErrored(errorType, errnum);
+
+            assert(buf_getErrorNum(errored) == errnum);
+        }
+    }
+
+    return true;
+}
+
+bool test_buf_getErrorReason() {
+    for (CLibErrorType errorType = ERROR_FIRST; errorType <= ERROR_LAST; ++errorType) {
+        for (int errnum = 0; errnum < sys_nerr; ++errnum) {
+            Buffer errored = buf_createErrored(errorType, errnum);
+            String reason = buf_getErrorReason(errored);
+            {
+                assert(str_containsStr(reason, errtype_str(errorType)));
+                if (errnum != 0) {
+                    assert(str_containsC(reason, strerror(errnum)));
+                }
+            }
+            str_destroy(&reason);
+        }
     }
 
     return true;
@@ -109,15 +191,15 @@ bool test_buf_destroy() {
 bool test_buf_setCapacity() {
     Buffer buffer = buf_create(24);
     {
-        assert(buffer.capacity == 24);
+        assert(buffer.size == 24);
         assertWritable(buffer);
 
-        assert(buf_setCapacity(&buffer, 16));
-        assert(buffer.capacity == 16);
+        assertSuccess(buf_setCapacity(&buffer, 16));
+        assert(buffer.size == 16);
         assertWritable(buffer);
 
-        assert(buf_setCapacity(&buffer, 80));
-        assert(buffer.capacity == 80);
+        assertSuccess(buf_setCapacity(&buffer, 80));
+        assert(buffer.size == 80);
         assertWritable(buffer);
     }
     buf_destroy(&buffer);
@@ -128,15 +210,15 @@ bool test_buf_setCapacity() {
 bool test_buf_ensureCapacity() {
     Buffer buffer = buf_create(24);
     {
-        assert(buffer.capacity == 24);
+        assert(buffer.size == 24);
         assertWritable(buffer);
 
-        assert(buf_ensureCapacity(&buffer, 16));
-        assert(buffer.capacity == 24);
+        assertSuccess(buf_ensureCapacity(&buffer, 16));
+        assert(buffer.size == 24);
         assertWritable(buffer);
 
-        assert(buf_ensureCapacity(&buffer, 80));
-        assert(buffer.capacity == 128);
+        assertSuccess(buf_ensureCapacity(&buffer, 80));
+        assert(buffer.size == 128);
         assertWritable(buffer);
     }
     buf_destroy(&buffer);
@@ -178,6 +260,11 @@ void test_Buffer(int * failures, int * successes) {
     test(buf_copy);
     test(buf_copyInto);
     test(buf_isEmpty);
+    test(buf_isValid);
+    test(buf_isErrored);
+    test(buf_getErrorType);
+    test(buf_getErrorNum);
+    test(buf_getErrorReason);
     test(buf_destroy);
     test(buf_setCapacity);
     test(buf_ensureCapacity);

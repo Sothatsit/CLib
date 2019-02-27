@@ -8,8 +8,7 @@
 bool test_errtype_c() {
     char * unknown = errtype_c(ERROR_UNKNOWN);
 
-    assert(ERROR_SUCCESS == 0);
-    for (CLibErrorType errorType = ERROR_SUCCESS; errorType < ERROR_COUNT; ++errorType) {
+    for (CLibErrorType errorType = ERROR_FIRST; errorType <= ERROR_LAST; ++errorType) {
         char * string = errtype_c(errorType);
 
         if (errorType == ERROR_UNKNOWN) {
@@ -28,8 +27,7 @@ bool test_errtype_c() {
 bool test_errtype_str() {
     String unknown = errtype_str(ERROR_UNKNOWN);
 
-    assert(ERROR_SUCCESS == 0);
-    for (CLibErrorType errorType = ERROR_SUCCESS; errorType < ERROR_COUNT; ++errorType) {
+    for (CLibErrorType errorType = ERROR_FIRST; errorType <= ERROR_LAST; ++errorType) {
         String string = errtype_str(errorType);
 
         if (errorType == ERROR_UNKNOWN) {
@@ -46,8 +44,7 @@ bool test_errtype_str() {
 }
 
 bool test_err_create() {
-    assert(ERROR_SUCCESS == 0);
-    for (CLibErrorType errorType = ERROR_SUCCESS; errorType < ERROR_COUNT; ++errorType) {
+    for (CLibErrorType errorType = ERROR_FIRST; errorType <= ERROR_LAST; ++errorType) {
         for (int errnum = 0; errnum < sys_nerr; ++errnum) {
             assert(err_create(errorType, errnum) <= -1);
         }
@@ -57,8 +54,7 @@ bool test_err_create() {
 }
 
 bool test_err_reason() {
-    assert(ERROR_SUCCESS == 0);
-    for (CLibErrorType errorType = ERROR_SUCCESS; errorType < ERROR_COUNT; ++errorType) {
+    for (CLibErrorType errorType = ERROR_FIRST; errorType <= ERROR_LAST; ++errorType) {
         for (int errnum = 0; errnum < sys_nerr; ++errnum) {
             String reason = err_reason(err_create(errorType, errnum));
 
@@ -73,15 +69,13 @@ bool test_err_reason() {
 }
 
 bool test_err_type() {
-    assert(err_type(-1 - ERROR_COUNT) == ERROR_INVALID);
-    assert(err_type(-1) == ERROR_SUCCESS);
+    assert(err_type(-ERROR_COUNT) == ERROR_INVALID);
     assert(err_type(0) == ERROR_NONE);
     assert(err_type(5) == ERROR_NONE);
     assert(err_type(234) == ERROR_NONE);
     assert(err_type(1532) == ERROR_NONE);
 
-    assert(ERROR_SUCCESS == 0);
-    for (CLibErrorType errorType = ERROR_SUCCESS; errorType < ERROR_COUNT; ++errorType) {
+    for (CLibErrorType errorType = ERROR_FIRST; errorType <= ERROR_LAST; ++errorType) {
         for (int errnum = 0; errnum < sys_nerr; ++errnum) {
             assert(err_type(err_create(errorType, errnum)) == errorType);
         }
@@ -97,8 +91,7 @@ bool test_err_num() {
     assert(err_num(234) == 0);
     assert(err_num(525323) == 0);
 
-    assert(ERROR_SUCCESS == 0);
-    for (CLibErrorType errorType = ERROR_SUCCESS; errorType < ERROR_COUNT; ++errorType) {
+    for (CLibErrorType errorType = ERROR_FIRST; errorType <= ERROR_LAST; ++errorType) {
         for (int errnum = 0; errnum < sys_nerr; ++errnum) {
             assert(err_num(err_create(errorType, errnum)) == errnum);
         }

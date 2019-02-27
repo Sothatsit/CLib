@@ -102,8 +102,7 @@ bool test_str_createEmpty() {
 }
 
 bool test_str_createErrored() {
-    assert(ERROR_SUCCESS == 0);
-    for (CLibErrorType errorType = ERROR_SUCCESS; errorType < ERROR_COUNT; ++errorType) {
+    for (CLibErrorType errorType = ERROR_FIRST; errorType <= ERROR_LAST; ++errorType) {
         for (int errnum = 0; errnum < sys_nerr; ++errnum) {
             String errored = str_createErrored(errorType, errnum);
 
@@ -120,8 +119,7 @@ bool test_str_getErrorType() {
     assert(str_getErrorType(str_create("Apples")) == ERROR_NONE);
     assert(str_getErrorType(str_createEmpty()) == ERROR_NONE);
 
-    assert(ERROR_SUCCESS == 0);
-    for (CLibErrorType errorType = ERROR_SUCCESS; errorType < ERROR_COUNT; ++errorType) {
+    for (CLibErrorType errorType = ERROR_FIRST; errorType <= ERROR_LAST; ++errorType) {
         for (int errnum = 0; errnum < sys_nerr; ++errnum) {
             String errored = str_createErrored(errorType, errnum);
 
@@ -136,8 +134,7 @@ bool test_str_getErrorNum() {
     assert(str_getErrorNum(str_create("Apples")) == 0);
     assert(str_getErrorNum(str_createEmpty()) == 0);
 
-    assert(ERROR_SUCCESS == 0);
-    for (CLibErrorType errorType = ERROR_SUCCESS; errorType < ERROR_COUNT; ++errorType) {
+    for (CLibErrorType errorType = ERROR_FIRST; errorType <= ERROR_LAST; ++errorType) {
         for (int errnum = 0; errnum < sys_nerr; ++errnum) {
             String errored = str_createErrored(errorType, errnum);
 
@@ -149,8 +146,7 @@ bool test_str_getErrorNum() {
 }
 
 bool test_str_getErrorReason() {
-    assert(ERROR_SUCCESS == 0);
-    for (CLibErrorType errorType = ERROR_SUCCESS; errorType < ERROR_COUNT; ++errorType) {
+    for (CLibErrorType errorType = ERROR_FIRST; errorType <= ERROR_LAST; ++errorType) {
         for (int errnum = 0; errnum < sys_nerr; ++errnum) {
             String errored = str_createErrored(errorType, errnum);
             String reason = str_getErrorReason(errored);
@@ -167,12 +163,27 @@ bool test_str_getErrorReason() {
     return true;
 }
 
+bool test_str_isValid() {
+    String valid = str_create("Apples");
+    String copy = str_copy(valid);
+    String empty = str_createEmpty();
+    String errored = str_createErrored(ERROR_UNKNOWN, 0);
+    {
+        assert(str_isValid(valid));
+        assert(str_isValid(copy));
+        assert(str_isValid(empty));
+        assert(!str_isValid(errored));
+    }
+    str_destroy(&copy);
+
+    return true;
+}
+
 bool test_str_isErrored() {
     assert(!str_isErrored(str_create("Apples")));
     assert(!str_isErrored(str_createEmpty()));
 
-    assert(ERROR_SUCCESS == 0);
-    for (CLibErrorType errorType = ERROR_SUCCESS; errorType < ERROR_COUNT; ++errorType) {
+    for (CLibErrorType errorType = ERROR_FIRST; errorType <= ERROR_LAST; ++errorType) {
         for (int errnum = 0; errnum < sys_nerr; ++errnum) {
             String errored = str_createErrored(errorType, errnum);
 
@@ -1087,6 +1098,7 @@ void test_String(int * failures, int * successes) {
     test(str_createEmpty);
     test(str_createErrored);
     test(str_isEmpty);
+    test(str_isValid);
     test(str_isErrored);
     test(str_getErrorType);
     test(str_getErrorNum);

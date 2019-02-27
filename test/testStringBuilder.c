@@ -10,8 +10,9 @@
 bool test_strbuilder_create() {
     StringBuilder builder = strbuilder_create(32);
     {
-        assert(builder.capacity == 32);
-        assert(builder.string.length == 0);
+        assert(buf_isValid(builder.buffer));
+        assert(builder.buffer.size == 32);
+        assert(builder.length == 0);
     }
     strbuilder_destroy(&builder);
 
@@ -42,8 +43,8 @@ bool test_strbuilder_getStringCopy() {
         builtString = strbuilder_getCopy(builder);
 
         assert(str_equals(builtString, expected));
-        assert(str_equals(builder.string, builtString));
-        assert(builder.string.data != builtString.data);
+        assert(str_equals(strbuilder_get(builder), builtString));
+        assert(strbuilder_get(builder).data != builtString.data);
     }
     strbuilder_destroy(&builder);
     str_destroy(&builtString);
@@ -55,13 +56,13 @@ bool test_strbuilder_setCapacity() {
     StringBuilder builder = strbuilder_create(32);
     strbuilder_appendC(&builder, "Testing testing, 1, 2, 3");
     {
-        assert(builder.capacity == 32);
+        assert(builder.buffer.size == 32);
 
         assertSuccess(strbuilder_setCapacity(&builder, 24));
-        assert(builder.capacity == 24);
+        assert(builder.buffer.size == 24);
 
         assertSuccess(strbuilder_setCapacity(&builder, 80));
-        assert(builder.capacity == 80);
+        assert(builder.buffer.size == 80);
 
         assert(strbuilder_setCapacity(&builder, 20) != ERROR_SUCCESS);
         assert(strbuilder_isErrored(builder));
@@ -75,16 +76,16 @@ bool test_strbuilder_ensureCapacity() {
     StringBuilder builder = strbuilder_create(32);
     strbuilder_appendC(&builder, "Testing testing, 1, 2, 3");
     {
-        assert(builder.capacity == 32);
+        assert(builder.buffer.size == 32);
 
         assertSuccess(strbuilder_ensureCapacity(&builder, 24));
-        assert(builder.capacity >= 24);
+        assert(builder.buffer.size >= 24);
 
         assertSuccess(strbuilder_ensureCapacity(&builder, 80));
-        assert(builder.capacity >= 80);
+        assert(builder.buffer.size >= 80);
 
         assertSuccess(strbuilder_ensureCapacity(&builder, 20));
-        assert(builder.capacity >= 20);
+        assert(builder.buffer.size >= 20);
     }
     strbuilder_destroy(&builder);
 
@@ -95,15 +96,15 @@ bool test_strbuilder_trimToLength() {
     StringBuilder builder = strbuilder_create(32);
     strbuilder_appendC(&builder, "Testing testing, 1, 2, 3");
     {
-        assert(builder.capacity == 32);
+        assert(builder.buffer.size == 32);
 
         assertSuccess(strbuilder_trimToLength(&builder));
-        assert(builder.capacity == 24);
+        assert(builder.buffer.size == 24);
 
         strbuilder_appendC(&builder, "...");
 
         assertSuccess(strbuilder_trimToLength(&builder));
-        assert(builder.capacity == 27);
+        assert(builder.buffer.size == 27);
     }
     strbuilder_destroy(&builder);
 
@@ -126,7 +127,7 @@ bool test_strbuilder_appendChar() {
         strbuilder_appendChar(&builder, '[');
         strbuilder_appendChar(&builder, ' ');
 
-        assert(str_equals(builder.string, expected));
+        assert(str_equals(strbuilder_get(builder), expected));
     }
     strbuilder_destroy(&builder);
 
@@ -144,7 +145,7 @@ bool test_strbuilder_append() {
         strbuilder_append(&builder, str_create("nice "));
         strbuilder_append(&builder, str_create("man"));
 
-        assert(str_equals(builder.string, expected));
+        assert(str_equals(strbuilder_get(builder), expected));
     }
     strbuilder_destroy(&builder);
 
@@ -162,7 +163,7 @@ bool test_strbuilder_appendC() {
         strbuilder_appendC(&builder, "nice ");
         strbuilder_appendC(&builder, "man");
 
-        assert(str_equals(builder.string, expected));
+        assert(str_equals(strbuilder_get(builder), expected));
     }
     strbuilder_destroy(&builder);
 
@@ -180,7 +181,7 @@ bool test_strbuilder_appendSubstring() {
         strbuilder_appendSubstring(&builder, str_create("nice nice "), 5, 10);
         strbuilder_appendSubstring(&builder, str_create("man man"), 0, 3);
 
-        assert(str_equals(builder.string, expected));
+        assert(str_equals(strbuilder_get(builder), expected));
     }
     strbuilder_destroy(&builder);
 

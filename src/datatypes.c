@@ -344,16 +344,31 @@ Buffer buf_createErrored(CLibErrorType errorType, int errnum) {
     return buf_create(err_create(errorType, errnum));
 }
 
-Buffer buf_createUsing(char * start, s64 size) {
-    if(start == NULL)
-        return buf_createErrored(ERROR_ARG_NULL, 0);
-    if(size <= 0)
+Buffer buf_createUsing(char * data, s64 size) {
+    if(size < 0)
         return buf_createErrored(ERROR_NEG_LENGTH, 0);
+    if(size > 0 && data == NULL)
+        return buf_createErrored(ERROR_ARG_NULL, 0);
+
+    if(size == 0) {
+        data = NULL;
+    }
 
     return (Buffer) {
-        .start = start,
+        .start = data,
         .size = size
     };
+}
+
+Buffer buf_createUsingC(char * string) {
+    if(string == NULL)
+        return buf_createErrored(ERROR_ARG_NULL, 0);
+
+    size_t length = strlen(string);
+    if(!can_cast_sizet_to_s64(length))
+        return buf_createErrored(ERROR_CAST, 0);
+
+    return buf_createUsing(string, (s64) length);
 }
 
 bool buf_isEmpty(Buffer buffer) {
@@ -739,6 +754,10 @@ bool str_equals(String string1, String string2) {
     return memcmp(string1.data, string2.data, (size_t) string1.length) == 0;
 }
 
+bool str_equalsC(String string1, char * string2) {
+    return str_equals(string1, str_create(string2));
+}
+
 bool str_startsWith(String string, String prefix) {
     if(str_isErrored(string) || str_isErrored(prefix))
         return false;
@@ -943,22 +962,22 @@ String str_replaceStr(String string, String find, String replacement) {
     if(str_isErrored(string) || str_isErrored(find) || str_isErrored(replacement))
         return str_createErrored(ERROR_ARG_INVALID, 0);
 
-    StringBuilder builder = strbuilder_create(string.length);
+    Builder builder = builder_create(string.length);
 
     s64 lastIndex = 0;
     s64 index;
 
     while((index = str_indexOfStrAfter(string, find, lastIndex)) >= 0) {
-        strbuilder_appendSubstring(&builder, string, lastIndex, index);
-        strbuilder_append(&builder, replacement);
+        builder_appendSubstring(&builder, string, lastIndex, index);
+        builder_appendStr(&builder, replacement);
 
         lastIndex = index + find.length;
     }
 
-    strbuilder_appendSubstring(&builder, string, lastIndex, string.length);
-    strbuilder_trimToLength(&builder);
+    builder_appendSubstring(&builder, string, lastIndex, string.length);
+    builder_trimToLength(&builder);
 
-    return strbuilder_get(builder);
+    return builder_str(builder);
 }
 
 String str_replaceC(String string, char * find, char * replacement) {
@@ -1206,11 +1225,11 @@ String str_readFile(char * filename) {
 
 
 //
-// String Builder
+// Builder
 //
 
-StringBuilder strbuilder_create(s64 initialSize) {
-    StringBuilder builder;
+Builder builder_create(s64 initialSize) {
+    Builder builder;
 
     builder.buffer = buf_create(initialSize);
     builder.length = 0;
@@ -1218,28 +1237,28 @@ StringBuilder strbuilder_create(s64 initialSize) {
     return builder;
 }
 
-StringBuilder strbuilder_createErrored(CLibErrorType errorType, int errnum) {
-    return strbuilder_create(err_create(errorType, errnum));
+Builder builder_createErrored(CLibErrorType errorType, int errnum) {
+    return builder_create(err_create(errorType, errnum));
 }
 
-bool strbuilder_isErrored(StringBuilder builder) {
+bool builder_isErrored(Builder builder) {
     return buf_isErrored(builder.buffer);
 }
 
-bool strbuilder_isValid(StringBuilder builder) {
-    return !strbuilder_isErrored(builder);
+bool builder_isValid(Builder builder) {
+    return !builder_isErrored(builder);
 }
 
-void strbuilder_destroy(StringBuilder * builder) {
-    if(strbuilder_isErrored(*builder))
+void builder_destroy(Builder * builder) {
+    if(builder_isErrored(*builder))
         return;
 
     buf_destroy(&builder->buffer);
-    *builder = strbuilder_createErrored(ERROR_FREED, 0);
+    *builder = builder_createErrored(ERROR_FREED, 0);
 }
 
-String strbuilder_get(StringBuilder builder) {
-    if(strbuilder_isErrored(builder)) {
+String builder_str(Builder builder) {
+    if(builder_isErrored(builder)) {
         CLibErrorType errorType = buf_getErrorType(builder.buffer);
         int errnum = buf_getErrorNum(builder.buffer);
         return str_createErrored(errorType, errnum);
@@ -1248,11 +1267,21 @@ String strbuilder_get(StringBuilder builder) {
     return str_createOfLength(builder.buffer.start, builder.length);
 }
 
-String strbuilder_getCopy(StringBuilder builder) {
-    return str_copy(strbuilder_get(builder));
+Buffer builder_buf(Builder builder) {
+    if(builder_isErrored(builder)) {
+        CLibErrorType errorType = buf_getErrorType(builder.buffer);
+        int errnum = buf_getErrorNum(builder.buffer);
+        return buf_createErrored(errorType, errnum);
+    }
+
+    return buf_createUsing(builder.buffer.start, builder.length);
 }
 
-CLibErrorType strbuilder_setCapacity(StringBuilder * builder, s64 capacity) {
+String builder_strCopy(Builder builder) {
+    return str_copy(builder_str(builder));
+}
+
+CLibErrorType builder_setCapacity(Builder * builder, s64 capacity) {
     if(capacity < builder->length) {
         builder->buffer = buf_createErrored(ERROR_ARG_INVALID, 0);
         return ERROR_ARG_INVALID;
@@ -1261,23 +1290,23 @@ CLibErrorType strbuilder_setCapacity(StringBuilder * builder, s64 capacity) {
     return buf_setCapacity(&builder->buffer, capacity);
 }
 
-CLibErrorType strbuilder_ensureCapacity(StringBuilder * builder, s64 requiredCapacity) {
+CLibErrorType builder_ensureCapacity(Builder * builder, s64 requiredCapacity) {
     return buf_ensureCapacity(&builder->buffer, requiredCapacity);
 }
 
-CLibErrorType strbuilder_trimToLength(StringBuilder * builder) {
-    if(strbuilder_isErrored(*builder))
+CLibErrorType builder_trimToLength(Builder * builder) {
+    if(builder_isErrored(*builder))
         return ERROR_ARG_INVALID;
 
-    return strbuilder_setCapacity(builder, builder->length);
+    return builder_setCapacity(builder, builder->length);
 }
 
-CLibErrorType strbuilder_appendChar(StringBuilder * builder, char character) {
-    if(strbuilder_isErrored(*builder))
+CLibErrorType builder_appendChar(Builder * builder, char character) {
+    if(builder_isErrored(*builder))
         return ERROR_ARG_INVALID;
 
     s64 requiredCapacity = builder->length + 1;
-    CLibErrorType result = strbuilder_ensureCapacity(builder, requiredCapacity);
+    CLibErrorType result = builder_ensureCapacity(builder, requiredCapacity);
     if(result != ERROR_SUCCESS)
         return result;
 
@@ -1288,8 +1317,8 @@ CLibErrorType strbuilder_appendChar(StringBuilder * builder, char character) {
     return ERROR_SUCCESS;
 }
 
-CLibErrorType strbuilder_append(StringBuilder * builder, String string) {
-    if(strbuilder_isErrored(*builder))
+CLibErrorType builder_appendStr(Builder * builder, String string) {
+    if(builder_isErrored(*builder))
         return ERROR_ARG_INVALID;
     if(str_isErrored(string))
         return err_type(string.length);
@@ -1298,7 +1327,7 @@ CLibErrorType strbuilder_append(StringBuilder * builder, String string) {
         return ERROR_SUCCESS;
 
     s64 requiredCapacity = builder->length + string.length;
-    CLibErrorType result = strbuilder_ensureCapacity(builder, requiredCapacity);
+    CLibErrorType result = builder_ensureCapacity(builder, requiredCapacity);
     if(result != ERROR_SUCCESS)
         return result;
 
@@ -1309,12 +1338,16 @@ CLibErrorType strbuilder_append(StringBuilder * builder, String string) {
     return ERROR_SUCCESS;
 }
 
-CLibErrorType strbuilder_appendC(StringBuilder * builder, char * string) {
-    return strbuilder_append(builder, str_create(string));
+CLibErrorType builder_appendBuf(Builder * builder, Buffer buffer) {
+    return builder_appendStr(builder, str_createOfLength(buffer.start, buffer.size));
 }
 
-CLibErrorType strbuilder_appendSubstring(StringBuilder * builder, String string, s64 start, s64 end) {
-    return strbuilder_append(builder, str_substring(string, start, end));
+CLibErrorType builder_appendC(Builder * builder, char * string) {
+    return builder_appendStr(builder, str_create(string));
+}
+
+CLibErrorType builder_appendSubstring(Builder * builder, String string, s64 start, s64 end) {
+    return builder_appendStr(builder, str_substring(string, start, end));
 }
 
 
@@ -1419,71 +1452,71 @@ u32 utf8_toCodepoint(String * remaining) {
 #undef __utf8ToCodepoint_appendChar
 
 String utf8_fromCodepoint(u32 codepoint) {
-    StringBuilder builder = strbuilder_create(4);
+    Builder builder = builder_create(4);
 
     utf8_appendCodepoint(&builder, codepoint);
 
-    return strbuilder_get(builder);
+    return builder_str(builder);
 }
 
-CLibErrorType utf8_appendCodepoint(StringBuilder *builder, u32 codepoint) {
+CLibErrorType utf8_appendCodepoint(Builder *builder, u32 codepoint) {
     if((codepoint & 0x80000000) != 0)
         return ERROR_INVALID_CODEPOINT;
 
     // If the codepoint can fit into 7 bits.
     if(codepoint <= 0x007F) {
         // 0xxxxxxx
-        return strbuilder_appendChar(builder, (char) codepoint);
+        return builder_appendChar(builder, (char) codepoint);
     }
 
     // If the codepoint can fit into 11 bits.
     if(codepoint <= 0x07FF) {
         // 110xxxxx 10xxxxxx
 
-        strbuilder_appendChar(builder, (char) (0xC0 | (codepoint >> 6)));
-        return strbuilder_appendChar(builder, (char) (0x80 | (codepoint & 0x3F)));
+        builder_appendChar(builder, (char) (0xC0 | (codepoint >> 6)));
+        return builder_appendChar(builder, (char) (0x80 | (codepoint & 0x3F)));
     }
 
     // If the codepoint can fit into 16 bits.
     if(codepoint <= 0xFFFF) {
         // 1110xxxx 10xxxxxx 10xxxxxx
 
-        strbuilder_appendChar(builder, (char) (0xE0 | (codepoint >> 12)));
-        strbuilder_appendChar(builder, (char) (0x80 | ((codepoint >> 6) & 0x3F)));
-        return strbuilder_appendChar(builder, (char) (0x80 | (codepoint & 0x3F)));
+        builder_appendChar(builder, (char) (0xE0 | (codepoint >> 12)));
+        builder_appendChar(builder, (char) (0x80 | ((codepoint >> 6) & 0x3F)));
+        return builder_appendChar(builder, (char) (0x80 | (codepoint & 0x3F)));
     }
 
     // If the codepoint can fit into 21 bits.
     if(codepoint <= 0x001FFFFF) {
         // 11110xxx 10xxxxxx 10xxxxxx 10xxxxxx
 
-        strbuilder_appendChar(builder, (char) (0xF0 | (codepoint >> 18)));
-        strbuilder_appendChar(builder, (char) (0x80 | ((codepoint >> 12) & 0x3F)));
-        strbuilder_appendChar(builder, (char) (0x80 | ((codepoint >> 6) & 0x3F)));
-        return strbuilder_appendChar(builder, (char) (0x80 | (codepoint & 0x3F)));
+        builder_appendChar(builder, (char) (0xF0 | (codepoint >> 18)));
+        builder_appendChar(builder, (char) (0x80 | ((codepoint >> 12) & 0x3F)));
+        builder_appendChar(builder, (char) (0x80 | ((codepoint >> 6) & 0x3F)));
+        return builder_appendChar(builder, (char) (0x80 | (codepoint & 0x3F)));
     }
 
     // If the codepoint can fit into 26 bits.
     if(codepoint <= 0x03FFFFFF) {
         // 111110xx 10xxxxxx 10xxxxxx 10xxxxxx 10xxxxxx
 
-        strbuilder_appendChar(builder, (char) (0xF8 | (codepoint >> 24)));
-        strbuilder_appendChar(builder, (char) (0x80 | ((codepoint >> 18) & 0x3F)));
-        strbuilder_appendChar(builder, (char) (0x80 | ((codepoint >> 12) & 0x3F)));
-        strbuilder_appendChar(builder, (char) (0x80 | ((codepoint >> 6) & 0x3F)));
-        return strbuilder_appendChar(builder, (char) (0x80 | (codepoint & 0x3F)));
+        builder_appendChar(builder, (char) (0xF8 | (codepoint >> 24)));
+        builder_appendChar(builder, (char) (0x80 | ((codepoint >> 18) & 0x3F)));
+        builder_appendChar(builder, (char) (0x80 | ((codepoint >> 12) & 0x3F)));
+        builder_appendChar(builder, (char) (0x80 | ((codepoint >> 6) & 0x3F)));
+        return builder_appendChar(builder, (char) (0x80 | (codepoint & 0x3F)));
     }
 
     // If the codepoint can fit into 31 bits.
     if(codepoint <= 0x7FFFFFFF) {
         // 1111110x 10xxxxxx 10xxxxxx 10xxxxxx 10xxxxxx 10xxxxxx
 
-        strbuilder_appendChar(builder, (char) (0xFC | (codepoint >> 30)));
-        strbuilder_appendChar(builder, (char) (0x80 | ((codepoint >> 24) & 0x3F)));
-        strbuilder_appendChar(builder, (char) (0x80 | ((codepoint >> 18) & 0x3F)));
-        strbuilder_appendChar(builder, (char) (0x80 | ((codepoint >> 12) & 0x3F)));
-        strbuilder_appendChar(builder, (char) (0x80 | ((codepoint >> 6) & 0x3F)));
-        return strbuilder_appendChar(builder, (char) (0x80 | (codepoint & 0x3F)));
+        builder_appendChar(builder, (char) (0xFC | (codepoint >> 30)));
+        builder_appendChar(builder, (char) (0x80 | ((codepoint >> 24) & 0x3F)));
+        builder_appendChar(builder, (char) (0x80 | ((codepoint >> 18) & 0x3F)));
+        builder_appendChar(builder, (char) (0x80 | ((codepoint >> 12) & 0x3F)));
+        builder_appendChar(builder, (char) (0x80 | ((codepoint >> 6) & 0x3F)));
+        return builder_appendChar(builder, (char) (0x80 | (codepoint & 0x3F)));
     }
 
     // Invalid codepoint.
@@ -1529,21 +1562,21 @@ u32 utf16le_toCodepoint(String * remaining) {
 #undef __utf16leToCodepoint_nextChar
 
 String utf16le_fromCodepoint(u32 codepoint) {
-    StringBuilder builder = strbuilder_create(4);
+    Builder builder = builder_create(4);
 
     utf16le_appendCodepoint(&builder, codepoint);
 
-    return strbuilder_get(builder);
+    return builder_str(builder);
 }
 
 #define __utf16leAppendCodepoint_append(builder, value, res)                        \
     do {                                                                            \
         const u8 low8bits = (1 << 8) - 1;                                           \
-        res = strbuilder_appendChar(builder, (char) ((value) & low8bits));          \
-        res = strbuilder_appendChar(builder, (char) (((value) >> 8) & low8bits));   \
+        res = builder_appendChar(builder, (char) ((value) & low8bits));          \
+        res = builder_appendChar(builder, (char) (((value) >> 8) & low8bits));   \
     } while(0);
 
-CLibErrorType utf16le_appendCodepoint(StringBuilder * builder, u32 codepoint) {
+CLibErrorType utf16le_appendCodepoint(Builder * builder, u32 codepoint) {
     CLibErrorType res;
 
     if(codepoint < 0x10000) {

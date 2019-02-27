@@ -2,7 +2,7 @@
 #include "testNumbers.h"
 #include "testSorting.h"
 #include "testString.h"
-#include "testStringBuilder.h"
+#include "testBuilder.h"
 #include "testUTF.h"
 #include "testBuffer.h"
 #include "testErrors.h"
@@ -12,7 +12,7 @@ void test_all(int * failures, int * successes) {
     test_numbers(failures, successes);
     test_sorting(failures, successes);
     test_String(failures, successes);
-    test_StringBuilder(failures, successes);
+    test_Builder(failures, successes);
     test_UTF(failures, successes);
     test_Buffer(failures, successes);
     test_errors(failures, successes);

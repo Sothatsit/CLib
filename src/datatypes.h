@@ -346,11 +346,18 @@ typedef struct String {
 Buffer buf_create(s64 capacity);
 
 /*!
- * Create a new Buffer using the data at {start} with capacity {capacity}.
+ * Create a new Buffer using the data in {data} with capacity {size}.
  *
- * Will return an empty Buffer if {start} is NULL or if {capacity} is 0.
+ * Will return an errored Buffer if {data} is NULL or if {size} is negative.
  */
-Buffer buf_createUsing(char * start, s64 capacity);
+Buffer buf_createUsing(char * data, s64 size);
+
+/*!
+ * Create a new Buffer using the data in the null-terminated string {string}.
+ *
+ * Will returned an errored Buffer if {string} is NULL.
+ */
+Buffer buf_createUsingC(char * string);
 
 /*!
  * Create an empty Buffer.
@@ -595,6 +602,11 @@ char * str_vformatC(char * format, va_list arguments);
  * Check if {string1} and {string2} contain the same data.
  */
 bool str_equals(String string1, String string2);
+
+/*!
+ * Check if {string1} and {string2} contain the same data.
+ */
+bool str_equalsC(String string1, char * string2);
 
 /*!
  * Check if {string} starts with {prefix}.
@@ -892,13 +904,13 @@ String str_readFile(char *filename);
 
 
 //
-// String Builder
+// Builder
 //
 
 /*!
- * A utility for creating Strings of unknown length.
+ * A utility for constructing Strings or Buffers of unknown length.
  */
-typedef struct StringBuilder {
+typedef struct Builder {
     /*!
      * The buffer to store the String as it is built.
      */
@@ -908,53 +920,58 @@ typedef struct StringBuilder {
      * The length of the built string.
      */
     s64 length;
-} StringBuilder;
+} Builder;
 
 /*!
- * Creates a new StringBuilder with initial capacity {initialSize}.
+ * Creates a new Builder with initial capacity {initialSize}.
  *
- * Will return a StringBuilder with capacity 0 on error or if {initialSize} is 0.
+ * Will return a Builder with capacity 0 on error or if {initialSize} is 0.
  */
-StringBuilder strbuilder_create(s64 initialSize);
+Builder builder_create(s64 initialSize);
 
 /*!
- * Creates a StringBuilder that is in an errored state.
+ * Creates a Builder that is in an errored state.
  */
-StringBuilder strbuilder_createErrored(CLibErrorType errorType, int errnum);
+Builder builder_createErrored(CLibErrorType errorType, int errnum);
 
 /*!
  * Returns whether {builder} is in an errored state.
  */
-bool strbuilder_isErrored(StringBuilder builder);
+bool builder_isErrored(Builder builder);
 
 /*!
- * Returns whether {builder} is a valid StringBuilder.
+ * Returns whether {builder} is a valid Builder.
  */
-bool strbuilder_isValid(StringBuilder builder);
+bool builder_isValid(Builder builder);
 
 /*!
- * Destroy {builder}.
+ * Destroy {builder}, and any data constructed within {builder}.
  *
  * As {builder}->string and {builder} share the same data, only one of these should be destroyed.
  */
-void strbuilder_destroy(StringBuilder * builder);
+void builder_destroy(Builder * builder);
 
 /*!
- * Returns the String in {builder}.
+ * Returns the contents of {builder} as a String.
  */
-String strbuilder_get(StringBuilder builder);
+String builder_str(Builder builder);
+
+/*!
+ * Returns the contents of {builder} as a Buffer.
+ */
+Buffer builder_buf(Builder builder);
 
 /*!
  * Returns a copy of the String in {builder}.
  */
-String strbuilder_getCopy(StringBuilder builder);
+String builder_strCopy(Builder builder);
 
 /*!
  * Sets the capacity of {builder} to {capacity}.
  *
  * Returns whether setting the capacity was successful.
  */
-CLibErrorType strbuilder_setCapacity(StringBuilder * builder, s64 capacity);
+CLibErrorType builder_setCapacity(Builder * builder, s64 capacity);
 
 /*!
  * If {requiredCapacity} is greater than the current capacity of {builder}, the
@@ -962,40 +979,47 @@ CLibErrorType strbuilder_setCapacity(StringBuilder * builder, s64 capacity);
  *
  * Returns whether it was able to ensure that {builder} has a capacity of at least {requiredCapacity}.
  */
-CLibErrorType strbuilder_ensureCapacity(StringBuilder * builder, s64 requiredCapacity);
+CLibErrorType builder_ensureCapacity(Builder * builder, s64 requiredCapacity);
 
 /*!
  * Attempts to reduce the capacity of {builder} so it is equal to the length of its contents.
  *
  * Returns whether reducing the capacity to its length was successful.
  */
-CLibErrorType strbuilder_trimToLength(StringBuilder * builder);
+CLibErrorType builder_trimToLength(Builder * builder);
 
 /*!
  * Will append {character} to {builder}.
  *
  * Returns whether appending {character} was succesful.
  */
-CLibErrorType strbuilder_appendChar(StringBuilder * builder, char character);
+CLibErrorType builder_appendChar(Builder * builder, char character);
 
 /*!
  * Will append {string} to {builder}.
  *
  * Returns whether appending {string} was successful.
  */
-CLibErrorType strbuilder_append(StringBuilder * builder, String string);
+CLibErrorType builder_appendStr(Builder * builder, String string);
+
+/*!
+ * Append the contents of {buffer} to {builder}.
+ *
+ * Returns whether appending {buffer} was successful.
+ */
+CLibErrorType builder_appendBuf(Builder * builder, Buffer buffer);
 
 /*!
  * Will append {string} to {builder}.
  *
  * Returns whether appending {string} was successful.
  */
-CLibErrorType strbuilder_appendC(StringBuilder * builder, char * string);
+CLibErrorType builder_appendC(Builder * builder, char * string);
 
 /*!
  * Will append a substring of {string} between {start} and {end} to {builder}.
  */
-CLibErrorType strbuilder_appendSubstring(StringBuilder * builder, String string, s64 start, s64 end);
+CLibErrorType builder_appendSubstring(Builder * builder, String string, s64 start, s64 end);
 
 
 
@@ -1023,7 +1047,7 @@ String utf8_fromCodepoint(u32 codepoint);
  *
  * Returns whether it was successful.
  */
-CLibErrorType utf8_appendCodepoint(StringBuilder * builder, u32 codepoint);
+CLibErrorType utf8_appendCodepoint(Builder * builder, u32 codepoint);
 
 /*!
  * Read a Unicode codepoint from the start of the UTF-16LE String {remaining}, modifiying
@@ -1045,7 +1069,7 @@ String utf16le_fromCodepoint(u32 codepoint);
  *
  * Returns whether it was successful.
  */
-CLibErrorType utf16le_appendCodepoint(StringBuilder * builder, u32 codepoint);
+CLibErrorType utf16le_appendCodepoint(Builder * builder, u32 codepoint);
 
 
 

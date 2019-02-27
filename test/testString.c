@@ -363,6 +363,10 @@ bool test_str_equals() {
     return true;
 }
 
+bool test_str_equalsC() {
+    return false;
+}
+
 bool test_str_startsWith() {
     String bob = str_createCopy("Bob");
     String jeff = str_createCopy("Bob Jeff");

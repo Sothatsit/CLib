@@ -4,6 +4,6 @@
 /*
  * Test the StringBuilder type.
  */
-void test_StringBuilder(int * failures, int * successes);
+void test_Builder(int * failures, int * successes);
 
 #endif

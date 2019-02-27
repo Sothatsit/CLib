@@ -25,10 +25,36 @@ bool test_buf_create() {
 bool test_buf_createUsing() {
     char * data = "ABCDEFGHIJ";
 
-    Buffer buffer = buf_createUsing(data, 10);
+    Buffer full = buf_createUsing(data, 10);
+    Buffer shorter = buf_createUsing(data, 5);
+    Buffer empty = buf_createUsing(data, 0);
+    Buffer errored = buf_createUsing(NULL, 5);
+    {
+        assert(full.start == data);
+        assert(full.size == 10);
+
+        assert(shorter.start == data);
+        assert(shorter.size == 5);
+
+        assert(empty.start == NULL);
+        assert(empty.size == 0);
+
+        assert(buf_isErrored(errored));
+    }
+
+    return true;
+}
+
+bool test_buf_createUsingC() {
+    char * data = "ABCDEFGHIJ";
+
+    Buffer buffer = buf_createUsingC(data);
+    Buffer errored = buf_createUsingC(NULL);
     {
         assert(buffer.start == data);
         assert(buffer.size == 10);
+
+        assert(buf_isErrored(errored));
     }
 
     return true;
@@ -46,7 +72,22 @@ bool test_buf_createEmpty() {
 }
 
 bool test_buf_createErrored() {
-    return false;
+    Buffer no_error = buf_createErrored(ERROR_NONE, 4);
+    assert(buf_getErrorType(no_error) == ERROR_ARG_INVALID);
+    assert(buf_getErrorNum(no_error) == 0);
+
+    for (CLibErrorType errorType = ERROR_FIRST; errorType <= ERROR_LAST; ++errorType) {
+        for (int errnum = 0; errnum < sys_nerr; ++errnum) {
+            Buffer errored = buf_createErrored(errorType, errnum);
+
+            assert(buf_getErrorType(errored) == errorType);
+            assert(buf_getErrorNum(errored) == errnum);
+            assert(buf_isErrored(errored));
+            assert(!buf_isValid(errored));
+        }
+    }
+
+    return true;
 }
 
 bool test_buf_copy() {
@@ -256,6 +297,7 @@ bool test_buf_equals() {
 void test_Buffer(int * failures, int * successes) {
     test(buf_create);
     test(buf_createUsing);
+    test(buf_createErrored);
     test(buf_createEmpty);
     test(buf_copy);
     test(buf_copyInto);

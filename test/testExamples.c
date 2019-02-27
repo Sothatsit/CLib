@@ -51,24 +51,30 @@ bool test_StringBuilder_example() {
     u64 numFruits = 5;
 
     {
-        // Create a StringBuilder to build a comma seperated array
-        StringBuilder builder = strbuilder_create(32);
+        // Create a Builder to build a comma seperated array String
+        Builder builder = builder_create(32);
 
         // Loop through each fruit in fruits and add it to builder
         for(u64 index = 0; index < numFruits; ++index) {
             String fruit = fruits[index];
 
             if(index != 0)
-                strbuilder_appendC(&builder, ", ");
+                builder_appendC(&builder, ", ");
 
-            strbuilder_append(&builder, fruit);
+            builder_appendStr(&builder, fruit);
         }
 
-        // Print out the built String
-        // printf("Fruits: [%s]\n", str_c(builder.string));
+        // Print out the built String. We'll have to create
+        // a temporary null-terminated string for printf.
+        char * arrayNullTerminated = str_c(builder_str(builder));
+        {
+            // printf("Fruits: [%s]\n", arrayNullTerminated);
+        }
+        free(arrayNullTerminated);
 
         // Destroy the StringBuilder
-        strbuilder_destroy(&builder);
+        // TODO : builder_c_destroy function like str_c_destroy
+        builder_destroy(&builder);
     }
 
     return true;

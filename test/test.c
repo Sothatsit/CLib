@@ -1,3 +1,5 @@
+#include <unistd.h>
+#include <signal.h>
 #include "test.h"
 #include "testNumbers.h"
 #include "testSorting.h"
@@ -51,17 +53,45 @@ void runTest(char * name, TestFunction testFunction, int * failures, int * succe
 
     clock_t begin = clock();
 
-    bool success = testFunction();
+    pid_t forkPID = fork();
+    if(forkPID == 0) {
+        exit(testFunction() ? 0 : 1);
+    }
+
+    bool success;
+
+    int status;
+    waitpid(forkPID, &status, 0);
 
     clock_t end = clock();
+
+    if(WIFEXITED(status)) {
+        int returnCode = WEXITSTATUS(status);
+        success = (returnCode == 0);
+    } else if(WIFSIGNALED(status)) {
+        int signal = WTERMSIG(status);
+        success = false;
+
+        printf(ERROR " :\n Exited due to signal - %s\n" RESET, strsignal(signal));
+    } else if(WIFSTOPPED(status)) {
+        int signal = WSTOPSIG(status);
+        success = false;
+
+        printf(ERROR " :\n Stopped due to signal - %s\n" RESET, strsignal(signal));
+        kill(forkPID, SIGKILL);
+    } else {
+        success = false;
+
+        printf(ERROR " :\n  Unknown exit status, %d\n" RESET, status);
+        kill(forkPID, SIGKILL);
+    }
 
     if(success) {
         ++(*successes);
     } else {
         double duration = (double) (end - begin) / (CLOCKS_PER_SEC / 1e3);
 
-        printf(FAILURE " : " MAGENTA "%s" RESET " (" YELLOW "%0.3f ms" RESET ")\n\n",
-               name, duration);
+        printf(FAILURE " : " MAGENTA "%s" RESET " (" YELLOW "%0.3f ms" RESET ")\n\n", name, duration);
 
         ++(*failures);
     }

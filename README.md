@@ -21,7 +21,7 @@ while(str_isValid(remaining)) {
     keyValue = str_splitC(&remaining, ", ");
 
     // Print out the result
-    char * keyValue_nullTerminated = str_c(keyValue);
+    char * keyValue_nullTerminated = str_c_destroy(keyValue);
     {
         printf("%s\n", keyValue_nullTerminated);
     }

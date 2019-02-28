@@ -515,6 +515,11 @@ bool buf_equals(Buffer buffer1, Buffer buffer2) {
 // Strings
 //
 
+/*!
+ * Set the value of {flag} to {value} in {string}.
+ */
+void str_setFlag(String * string, u8 flag, bool value);
+
 String str_copy(String string) {
     if(str_isErrored(string) || str_isEmpty(string))
         return string;
@@ -536,7 +541,11 @@ String str_create(char * data) {
     if(!can_cast_sizet_to_s64(length))
         return str_createErrored(ERROR_CAST, 0);
 
-    return str_createOfLength(data, (s64) length);
+    String string = str_createOfLength(data, (s64) length);
+
+    str_setFlag(&string, STRING_FLAG_IS_NULL_TERMINATED, true);
+
+    return string;
 }
 
 String str_createCopy(char * data) {
@@ -554,6 +563,11 @@ String str_createOfLength(char * data, s64 length) {
 
     string.data = data;
     string.length = length;
+    string.flags = 0;
+
+    if(data != NULL) {
+        str_setFlag(&string, STRING_FLAG_IS_OWN_ALLOCATION, true);
+    }
 
     return string;
 }
@@ -567,16 +581,22 @@ String str_createUninitialised(s64 length) {
         return str_createErrored(ERROR_NEG_LENGTH, 0);
     if(length == 0)
         return str_createEmpty();
-    if(!can_cast_s64_to_sizet(length))
+    if(!can_cast_s64_to_sizet(length + 1))
         return str_createErrored(ERROR_CAST, 0);
 
     String string;
 
-    string.data = malloc((size_t) length);
+    string.data = malloc((size_t) (length + 1));
     string.length = length;
+    string.flags = 0;
 
     if(string.data == NULL)
         return str_createErrored(ERROR_ALLOC, errno);
+
+    string.data[length] = '\0';
+
+    str_setFlag(&string, STRING_FLAG_IS_NULL_TERMINATED, true);
+    str_setFlag(&string, STRING_FLAG_IS_OWN_ALLOCATION, true);
 
     return string;
 }
@@ -625,11 +645,31 @@ String str_getErrorReason(String string) {
     return err_reason(string.length);
 }
 
+void str_setFlag(String * string, u8 flag, bool value) {
+    if(value) {
+        string->flags |= flag;
+    } else {
+        string->flags &= (~flag);
+    }
+}
+
+bool str_isFlagSet(String string, u8 flag) {
+    return (string.flags & flag) == flag;
+}
+
+bool str_isNullTerminated(String string) {
+    return str_isFlagSet(string, STRING_FLAG_IS_NULL_TERMINATED);
+}
+
+bool str_isOwnAllocation(String string) {
+    return str_isFlagSet(string, STRING_FLAG_IS_OWN_ALLOCATION);
+}
+
 void str_destroy(String * string) {
     if(str_isErrored(*string))
         return;
 
-    if(string->data != NULL) {
+    if(string->data != NULL && str_isOwnAllocation(*string)) {
         free(string->data);
     }
 
@@ -658,7 +698,17 @@ char * str_c(String string) {
 }
 
 char * str_c_destroy(String * string) {
-    // TODO : We should be able to re-use the data in string in some cases
+    // If the string is already null-terminated, we can just re-use it.
+    if(str_isNullTerminated(*string) && str_isOwnAllocation(*string)) {
+        char * data = string->data;
+        string->data = NULL;
+
+        str_destroy(string);
+
+        return data;
+    }
+
+    // Otherwise we'll have to convert it.
     char * cStr = str_c(*string);
 
     str_destroy(string);
@@ -828,6 +878,7 @@ s64 str_indexOfStrAfter(String string, String find, s64 index) {
 
     String checkString;
     checkString.length = find.length;
+    checkString.flags = 0;
 
     s64 maxIndex = string.length - find.length;
     for(; index <= maxIndex; index++) {
@@ -869,6 +920,7 @@ s64 str_lastIndexOfStr(String string, String find) {
 
     String checkString;
     checkString.length = find.length;
+    checkString.flags = 0;
 
     s64 index = string.length - find.length + 1;
 
@@ -1004,6 +1056,7 @@ String str_replaceStrInPlace(String string, String find, String replacement) {
 
         modified.data = string.data;
         modified.length = 0;
+        modified.flags = string.flags;
 
         s64 copyFromIndex = 0;
         s64 findIndex;
@@ -1031,7 +1084,11 @@ String str_replaceStrInPlace(String string, String find, String replacement) {
 
             s64 end = modified.length;
             modified.length += copyBack.length;
+
             str_setChars(modified, end, copyBack);
+            modified.data[modified.length] = '\0';
+
+            str_setFlag(&modified, STRING_FLAG_IS_NULL_TERMINATED, true);
         }
 
         return modified;
@@ -1099,6 +1156,11 @@ String str_substring(String string, s64 start, s64 end) {
 
     substring.length = end - start;
     substring.data = &string.data[start];
+    substring.flags = 0;
+
+    if(end == string.length && str_isNullTerminated(string)) {
+        str_setFlag(&substring, STRING_FLAG_IS_NULL_TERMINATED, true);
+    }
 
     return substring;
 }

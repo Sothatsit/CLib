@@ -330,7 +330,15 @@ typedef struct String {
      * The length, in chars, of the blob of data.
      */
     s64 length;
+
+    /*!
+     * Flags containing info about this String.
+     */
+    u8 flags;
 } String;
+
+#define STRING_FLAG_IS_NULL_TERMINATED ((u8) 1)
+#define STRING_FLAG_IS_OWN_ALLOCATION ((u8) 2)
 
 
 
@@ -544,6 +552,21 @@ int str_getErrorNum(String string);
 String str_getErrorReason(String string);
 
 /*!
+ * Returns whether {flag} is set in {string}.
+ */
+bool str_isFlagSet(String string, u8 flag);
+
+/*!
+ * Returns whether the data in {string} is already null-terminated.
+ */
+bool str_isNullTerminated(String string);
+
+/*!
+ * Returns whether the data in {string} is its own allocation.
+ */
+bool str_isOwnAllocation(String string);
+
+/*!
  * Destroy {string}.
  *
  * Any Strings derived from {string} (e.g. substrings) will be
@@ -563,6 +586,8 @@ char * str_c(String string);
 
 /*!
  * Creates a null terminated version of {string}, and destroys {string}.
+ *
+ * This method will re-use the data in {string} if possible.
  *
  * The returned null terminated string should be free'd.
  */

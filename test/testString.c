@@ -209,6 +209,107 @@ bool test_str_isEmpty() {
     return true;
 }
 
+bool test_str_isFlagSet() {
+    String empty = str_createEmpty();
+    String errored = str_createErrored(ERROR_UNKNOWN, 0);
+    String string = str_create("Testing, testing, 123...");
+    String start_substring = str_substring(string, 0, 10);
+    String middle_substring = str_substring(string, 5, 15);
+    String end_substring = str_substring(string, 15, string.length);
+    String copy = str_copy(middle_substring);
+    {
+        assert(!str_isFlagSet(empty, STRING_FLAG_IS_NULL_TERMINATED));
+        assert(!str_isFlagSet(empty, STRING_FLAG_IS_OWN_ALLOCATION));
+        assert(!str_isFlagSet(empty, STRING_FLAG_IS_NULL_TERMINATED | STRING_FLAG_IS_OWN_ALLOCATION));
+
+        assert(!str_isFlagSet(errored, STRING_FLAG_IS_NULL_TERMINATED));
+        assert(!str_isFlagSet(errored, STRING_FLAG_IS_OWN_ALLOCATION));
+        assert(!str_isFlagSet(errored, STRING_FLAG_IS_NULL_TERMINATED | STRING_FLAG_IS_OWN_ALLOCATION));
+
+        assert(str_isFlagSet(string, STRING_FLAG_IS_NULL_TERMINATED));
+        assert(str_isFlagSet(string, STRING_FLAG_IS_OWN_ALLOCATION));
+        assert(str_isFlagSet(string, STRING_FLAG_IS_NULL_TERMINATED | STRING_FLAG_IS_OWN_ALLOCATION));
+
+        assert(!str_isFlagSet(start_substring, STRING_FLAG_IS_NULL_TERMINATED));
+        assert(!str_isFlagSet(start_substring, STRING_FLAG_IS_OWN_ALLOCATION));
+        assert(!str_isFlagSet(start_substring, STRING_FLAG_IS_NULL_TERMINATED | STRING_FLAG_IS_OWN_ALLOCATION));
+
+        assert(!str_isFlagSet(middle_substring, STRING_FLAG_IS_NULL_TERMINATED));
+        assert(!str_isFlagSet(middle_substring, STRING_FLAG_IS_OWN_ALLOCATION));
+        assert(!str_isFlagSet(middle_substring, STRING_FLAG_IS_NULL_TERMINATED | STRING_FLAG_IS_OWN_ALLOCATION));
+
+        assert(str_isFlagSet(end_substring, STRING_FLAG_IS_NULL_TERMINATED));
+        assert(!str_isFlagSet(end_substring, STRING_FLAG_IS_OWN_ALLOCATION));
+        assert(!str_isFlagSet(end_substring, STRING_FLAG_IS_NULL_TERMINATED | STRING_FLAG_IS_OWN_ALLOCATION));
+
+        assert(str_isFlagSet(copy, STRING_FLAG_IS_NULL_TERMINATED));
+        assert(str_isFlagSet(copy, STRING_FLAG_IS_OWN_ALLOCATION));
+        assert(str_isFlagSet(copy, STRING_FLAG_IS_NULL_TERMINATED | STRING_FLAG_IS_OWN_ALLOCATION));
+    }
+    str_destroy(&empty);
+    str_destroy(&errored);
+    str_destroy(&start_substring);
+    str_destroy(&middle_substring);
+    str_destroy(&end_substring);
+    str_destroy(&copy);
+
+    return true;
+}
+
+bool test_str_isNullTerminated() {
+    String empty = str_createEmpty();
+    String errored = str_createErrored(ERROR_UNKNOWN, 0);
+    String string = str_create("Testing, testing, 123...");
+    String start_substring = str_substring(string, 0, 10);
+    String middle_substring = str_substring(string, 5, 15);
+    String end_substring = str_substring(string, 15, string.length);
+    String copy = str_copy(middle_substring);
+    {
+        assert(!str_isNullTerminated(empty));
+        assert(!str_isNullTerminated(errored));
+        assert(str_isNullTerminated(string));
+        assert(!str_isNullTerminated(start_substring));
+        assert(!str_isNullTerminated(middle_substring));
+        assert(str_isNullTerminated(end_substring));
+        assert(str_isNullTerminated(copy));
+    }
+    str_destroy(&empty);
+    str_destroy(&errored);
+    str_destroy(&start_substring);
+    str_destroy(&middle_substring);
+    str_destroy(&end_substring);
+    str_destroy(&copy);
+
+    return true;
+}
+
+bool test_str_isOwnAllocation() {
+    String empty = str_createEmpty();
+    String errored = str_createErrored(ERROR_UNKNOWN, 0);
+    String string = str_create("Testing, testing, 123...");
+    String start_substring = str_substring(string, 0, 10);
+    String middle_substring = str_substring(string, 5, 15);
+    String end_substring = str_substring(string, 15, string.length);
+    String copy = str_copy(middle_substring);
+    {
+        assert(!str_isOwnAllocation(empty));
+        assert(!str_isOwnAllocation(errored));
+        assert(str_isOwnAllocation(string));
+        assert(!str_isOwnAllocation(start_substring));
+        assert(!str_isOwnAllocation(middle_substring));
+        assert(!str_isOwnAllocation(end_substring));
+        assert(str_isOwnAllocation(copy));
+    }
+    str_destroy(&empty);
+    str_destroy(&errored);
+    str_destroy(&start_substring);
+    str_destroy(&middle_substring);
+    str_destroy(&end_substring);
+    str_destroy(&copy);
+
+    return true;
+}
+
 bool test_str_destroy() {
     return true;
 }
@@ -1108,6 +1209,10 @@ void test_String(int * failures, int * successes) {
     test(str_getErrorNum);
     test(str_getErrorReason);
     test(str_destroy);
+
+    test(str_isFlagSet);
+    test(str_isNullTerminated);
+    test(str_isOwnAllocation);
 
     test(str_c);
     test(str_toCString);

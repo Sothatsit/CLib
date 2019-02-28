@@ -716,13 +716,8 @@ char * str_c_destroy(String * string) {
     return cStr;
 }
 
-char * str_toCString(String string) {
-    return str_c(string);
-}
-
 String str_format(char * format, ...) {
     va_list argList;
-
     va_start(argList, format);
 
     String formattedString = str_vformat(format, argList);
@@ -734,7 +729,6 @@ String str_format(char * format, ...) {
 
 char * str_formatC(char * format, ...) {
     va_list argList;
-
     va_start(argList, format);
 
     char * formattedString = str_vformatC(format, argList);
@@ -763,29 +757,15 @@ String str_vformat(char * format, va_list arguments) {
 
     vsprintf(data, format, argumentsCopy);
 
-    return str_createOfLength(data, length - 1);
+    String string = str_createOfLength(data, length - 1);
+    str_setFlag(&string, STRING_FLAG_IS_NULL_TERMINATED, true);
+
+    return string;
 }
 
 char * str_vformatC(char * format, va_list arguments) {
-    va_list argumentsCopy = {};
-    va_copy(argumentsCopy, arguments);
-
-    s64 length = vsnprintf(NULL, 0, format, arguments);
-    if(length < 0)
-        return NULL;
-
-    // For the null character
-    length += 1;
-    if(!can_cast_s64_to_sizet(length))
-        return NULL;
-
-    char * data = malloc((size_t) length);
-    if(data == NULL)
-        return NULL;
-
-    vsprintf(data, format, argumentsCopy);
-
-    return data;
+    String formatted = str_vformat(format, arguments);
+    return str_c_destroy(&formatted);
 }
 
 bool str_equals(String string1, String string2) {
@@ -871,10 +851,10 @@ s64 str_indexOfStrAfter(String string, String find, s64 index) {
     if(str_isErrored(string) || str_isErrored(find) || index < 0)
         return -2;
 
-    if(find.length > string.length)
+    if(find.length > string.length || string.length == 0)
         return -1;
     if(find.length == 0)
-        return -1;
+        return index + 1;
 
     String checkString;
     checkString.length = find.length;
@@ -944,6 +924,9 @@ bool str_containsChar(String string, char find) {
 }
 
 bool str_containsStr(String string, String find) {
+    if(find.length == 0)
+        return false;
+
     return str_indexOfStr(string, find) != -1;
 }
 
@@ -1341,6 +1324,10 @@ Buffer builder_buf(Builder builder) {
 
 String builder_strCopy(Builder builder) {
     return str_copy(builder_str(builder));
+}
+
+Buffer builder_bufCopy(Builder builder) {
+    return buf_copy(builder_buf(builder));
 }
 
 CLibErrorType builder_setCapacity(Builder * builder, s64 capacity) {

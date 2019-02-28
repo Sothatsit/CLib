@@ -348,8 +348,6 @@ typedef struct String {
 
 /*!
  * Allocates a new Buffer with capacity {capacity}.
- *
- * Will return an empty Buffer on error or if {capacity} is 0.
  */
 Buffer buf_create(s64 capacity);
 
@@ -412,16 +410,12 @@ int buf_getErrorNum(Buffer buffer);
 String buf_getErrorReason(Buffer buffer);
 
 /*!
- * Create a copy of {buffer}.
- *
- * Will return an empty Buffer on failure or if {buffer} is empty.
+ * Allocate a copy of {buffer}.
  */
 Buffer buf_copy(Buffer buffer);
 
 /*!
- * Copy the contents of {data} into the {destination} starting from {index}.
- *
- * Will return whether it was successful.
+ * Copy the contents of {data} into {destination} starting from {index}.
  */
 CLibErrorType buf_copyInto(Buffer destination, Buffer data, s64 index);
 
@@ -432,16 +426,11 @@ void buf_destroy(Buffer * buffer);
 
 /*!
  * Sets the capacity of {buffer} to {capacity}.
- *
- * Returns whether setting the capacity was successful.
  */
 CLibErrorType buf_setCapacity(Buffer * buffer, s64 capacity);
 
 /*!
- * If {requiredCapacity} is greater than the current capacity of {buffer}, the
- * capacity of {buffer} will be attempted to be increased to the next power of 2.
- *
- * Returns whether it was able to ensure that {buffer} has a capacity of at least {requiredCapacity}.
+ * b
  */
 CLibErrorType buf_ensureCapacity(Buffer * buffer, s64 requiredCapacity);
 
@@ -458,16 +447,14 @@ bool buf_equals(Buffer buffer1, Buffer buffer2);
 
 /*!
  * Create a copy of {string}.
- *
- * str_destroy should be used on the returned String when it is no longer being used.
  */
 String str_copy(String string);
 
 /*!
- * Create a String from the C string {data}.
+ * Create a String from the null-terminated string {data}.
  *
- * This will use the characters in {data}, if {data} is freed the returned String
- * will be invalid. Use str_createCopy to create a copy when creating a String.
+ * This will use the characters in {data}. If {data} is freed then the returned
+ * String will be invalid. Use str_createCopyOfLength to create a copy of the data.
  *
  * str_destroy may be used on the returned String and will free {data}.
  * str_destroy should not be used on this String if {data} should not be freed.
@@ -475,7 +462,7 @@ String str_copy(String string);
 String str_create(char * data);
 
 /*!
- * Create a String from the C string {data}, copying {data} instead of using it.
+ * Create a String from the C string {data}, copying {data} instead of using it directly.
  *
  * str_destroy should be used on the returned String once it is no longer being used.
  */
@@ -484,7 +471,7 @@ String str_createCopy(char * data);
 /*!
  * Create a String from the characters in {data} with the length {length}.
  *
- * This will use the characters in {data}, if {data} is freed the returned
+ * This will use the characters in {data}. If {data} is freed then the returned
  * String will be invalid. Use str_createCopyOfLength to create a copy of the data.
  *
  * str_destroy may be used on the returned String and will free {data}.
@@ -493,10 +480,10 @@ String str_createCopy(char * data);
 String str_createOfLength(char * data, s64 length);
 
 /*!
- * Create a String from the characters in {data} with the length {length}, copying {data} instead of using it.
+ * Create a String from the characters in {data} with the length
+ * {length}, copying {data} instead of using it directly.
  *
- * str_destroy may be used on the returned String and will free {data}.
- * str_destroy should not be used on this String if {data} should not be freed.
+ * str_destroy should be used on the returned String once it is no longer being used.
  */
 String str_createCopyOfLength(char * data, s64 length);
 
@@ -508,7 +495,7 @@ String str_createCopyOfLength(char * data, s64 length);
 String str_createUninitialised(s64 length);
 
 /*!
- * Returns a String that represents an error.
+ * Returns a String that represents the error.
  */
 String str_createErrored(CLibErrorType errorType, int errnum);
 
@@ -548,6 +535,8 @@ int str_getErrorNum(String string);
 
 /*!
  * Returns a String containing the reason for the errored String {string}.
+ *
+ * The returned String should be destroyed once it is no longer being used.
  */
 String str_getErrorReason(String string);
 
@@ -571,22 +560,18 @@ bool str_isOwnAllocation(String string);
  *
  * Any Strings derived from {string} (e.g. substrings) will be
  * invalid after this operation unless copied using str_copy.
- *
- * If {string} is a substring of another String, the result of this operation is
- * undefined and may error. The original String should be destroyed instead.
  */
 void str_destroy(String * string);
 
 /*!
- * Creates a null terminated version of {string}.
+ * Creates a null-terminated version of {string}.
  *
- * The returned null terminated string should be free'd.
+ * The returned null-terminated string should be free'd.
  */
 char * str_c(String string);
 
 /*!
  * Creates a null terminated version of {string}, and destroys {string}.
- *
  * This method will re-use the data in {string} if possible.
  *
  * The returned null terminated string should be free'd.
@@ -594,19 +579,16 @@ char * str_c(String string);
 char * str_c_destroy(String * string);
 
 /*!
- * An alias of str_c.
- */
-char * str_toCString(String string);
-
-/*!
- * Creates a String from the printf format string
- * {format} and the arguments {arguments}.
+ * Creates a String from the printf format string {format} and the given arguments.
+ *
+ * Any String's should be converted to null-terminated strings before use in this function.
  */
 String str_format(char * format, ...);
 
 /*!
- * Creates a null-terminated string from the printf format
- * string {format} and the arguments {arguments}.
+ * Creates a null-terminated string from the printf format string {format} and the given arguments.
+ *
+ * Any String's should be converted to null-terminated strings before use in this function.
  *
  * Will return NULL on failure.
  */
@@ -614,12 +596,17 @@ char * str_formatC(char * format, ...);
 
 /*!
  * Creates a String from the printf format string {format} and the arguments {arguments}.
+ *
+ * Any String's should be converted to null-terminated strings before use in this function.
  */
 String str_vformat(char * format, va_list arguments);
 
 /*!
- * Creates a null-terminated string from the printf
- * format string {format} and the arguments {arguments}.
+ * Creates a null-terminated string from the printf format string {format} and the arguments {arguments}.
+ *
+ * Any String's should be converted to null-terminated strings before use in this function.
+ *
+ * Will return NULL on failure.
  */
 char * str_vformatC(char * format, va_list arguments);
 
@@ -646,7 +633,7 @@ bool str_endsWith(String string, String suffix);
 /*!
  * Returns the character at {index} in {string}.
  *
- * If {index} is out of the bounds of {string}, the null character will be returned.
+ * If {index} is out of the bounds of {string}, '\0' will be returned.
  */
 char str_get(String string, s64 index);
 
@@ -658,59 +645,61 @@ s64 str_indexOfChar(String string, char find);
 /*!
  * Find the index of the first occurence of {find} in {string}.
  *
- * If {find} is empty will return 1 unless {string} is also empty, in which case it will return -1.
+ * If {find} is empty then 1 will be returned, unless {string}
+ * is also empty, in which case -1 will be returned.
  *
- * Will return -1 if {find} is not found.
- * Will return -2 on error.
+ * Will return -1 if {find} is not found. Will return -2 on error.
  */
 s64 str_indexOfStr(String string, String find);
 
 /*!
  * Find the index of the first occurence of {find} in {string}.
  *
- * If {find} is empty will return 1 unless {string} is also empty, in which case it will return -1.
+ * If {find} is empty then 1 will be returned, unless {string}
+ * is also empty, in which case -1 will be returned.
  *
- * Will return -1 if {find} is not found.
- * Will return -2 on error.
+ * Will return -1 if {find} is not found. Will return -2 on error.
  */
 s64 str_indexOfC(String string, char * find);
 
 /*!
  * Find the index of the first occurence of {find} after or at {index} in {string}.
  *
- * Will return -1 if {find} is not found after or at {index}.
- * Will return -2 on error.
+ * Will return -1 if {find} is not found. Will return -2 on error.
  */
 s64 str_indexOfCharAfter(String string, char find, s64 index);
 
 /*!
  * Find the index of the first occurence of {find} after or at {index} in {string}.
  *
- * Will return -1 if {find} is not found after or at {index}, or if {find} is empty.
- * Will return -2 on error.
+ * If {find} is empty then 1 will be returned, unless {string}
+ * is also empty, in which case -1 will be returned.
+ *
+ * Will return -1 if {find} is not found. Will return -2 on error.
  */
 s64 str_indexOfStrAfter(String string, String find, s64 index);
 
 /*!
  * Find the index of the first occurence of {find} after or at {index} in {string}.
  *
- * Will return -1 if {find} is not found after or at {index}, or if {find} is empty.
- * Will return -2 on error.
+ * If {find} is empty then 1 will be returned, unless {string}
+ * is also empty, in which case -1 will be returned.
+ *
+ * Will return -1 if {find} is not found. Will return -2 on error.
  */
 s64 str_indexOfCAfter(String string, char * find, s64 index);
 
 /*!
  * Find the index of the last occurence of {find} in {string}.
  *
- * Will return -1 if {find} is not found.
- * Will return -2 on error.
+ * Will return -1 if {find} is not found. Will return -2 on error.
  */
 s64 str_lastIndexOfChar(String string, char find);
 
 /*!
  * Find the index of the last occurence of {find} in {string}.
  *
- * Will return -1 if {find} is not found.
+ * Will return -1 if {find} is not found, or if {find} is empty.
  * Will return -2 on error.
  */
 s64 str_lastIndexOfStr(String string, String find);
@@ -718,7 +707,7 @@ s64 str_lastIndexOfStr(String string, String find);
 /*!
  * Find the index of the last occurence of {find} in {string}.
  *
- * Will return -1 if {find} is not found.
+ * Will return -1 if {find} is not found, or if {find} is empty.
  * Will return -2 on error.
  */
 s64 str_lastIndexOfC(String string, char * find);
@@ -740,49 +729,37 @@ bool str_containsC(String string, char * find);
 
 /*!
  * Modifies all the characters in {string} to make them uppercase as defined by char_toUppercase.
- *
- * This will modify {string}, if this is unwanted use str_copy beforehand.
  */
 void str_toUppercase(String string);
 
 /*!
  * Modifies all the characters in {string} to make them lowercase as defined by char_toLowercase.
- *
- * This will modify {string}, if this is unwanted use str_copy beforehand.
  */
 void str_toLowercase(String string);
 
 /*!
  * Set the character at {index} in {string} to {character}.
  *
- * Returns true if {index} is within the bounds of {string} and the character was set.
+ * Will perform a bounds check to ensure that {index} exists within {string}.
  */
 CLibErrorType str_set(String string, s64 index, char character);
 
 /*!
  * Set the characters in {string} at {index} to the characters in {replacement}.
  *
- * This will modify {string}, if this is unwanted use str_copy beforehand.
- *
  * Will perform a bounds check to ensure that {replacement} will fit completely into {string}.
- * Returns whether the operation was successful.
  */
 CLibErrorType str_setChars(String string, s64 index, String replacement);
 
 /*!
  * Set the characters in {string} at {index} to the characters in {replacement}.
  *
- * This will modify {string}, if this is unwanted use str_copy beforehand.
- *
  * Will perform a bounds check to ensure that {replacement} will fit completely into {string}.
- * Returns whether the operation was successful.
  */
 CLibErrorType str_setCharsC(String string, s64 index, char * replacement);
 
 /*!
  * Replace all occurences of {find} in {string} with {replacement}.
- *
- * This will modify {string}, if this is unwanted use str_copy beforehand.
  */
 void str_replaceChar(String string, char find, char replacement);
 
@@ -790,8 +767,7 @@ void str_replaceChar(String string, char find, char replacement);
  * Replace all occurences of {find} in {string} with {replacement}.
  *
  * This will return a new String. This new String should be destroyed when it's no longer in use.
- *
- * Will return an empty String on failure.
+ * If allocating a new String is not wanted, then str_replaceStrInPlace should be used instead.
  */
 String str_replaceStr(String string, String find, String replacement);
 
@@ -799,8 +775,7 @@ String str_replaceStr(String string, String find, String replacement);
  * Replace all occurences of {find} in {string} with {replacement}.
  *
  * This will return a new String. This new String should be destroyed when it's no longer in use.
- *
- * Will return an empty String on failure.
+ * If allocating a new String is not wanted, then str_replaceCInPlace should be used instead.
  */
 String str_replaceC(String string, char * find, char * replacement);
 
@@ -808,8 +783,6 @@ String str_replaceC(String string, char * find, char * replacement);
  * Replace all occurences of {find} in {string} with {replacement}, modifying {string}.
  *
  * Requires that the length of {find} is greater than or equal to the length of {replacement}.
- *
- * Will return an empty String on failure.
  */
 String str_replaceStrInPlace(String string, String find, String replacement);
 
@@ -817,15 +790,11 @@ String str_replaceStrInPlace(String string, String find, String replacement);
  * Replace all occurences of {find} in {string} with {replacement}, modifying {string}.
  *
  * Requires that the length of {find} is greater than or equal to the length of {replacement}.
- *
- * Will return an empty String on failure.
  */
 String str_replaceCInPlace(String string, char * find, char * replacement);
 
 /*!
  * Reverse the characters in {string} in place.
- *
- * Will return an empty String on failure.
  */
 void str_reverse(String string);
 
@@ -833,48 +802,26 @@ void str_reverse(String string);
  * Concatenate {string1} and {string2} into a new String.
  *
  * str_destroy should be used on the returned String when it is no longer being used.
- *
- * Will return an empty String on failure.
  */
 String str_concat(String string1, String string2);
 
 /*!
  * Get a substring of {string} inclusive from the index {start} to {end} - 1.
- *
- * The length of the returned String will be {end} - {start}, barring error.
- * If start or end is out of the bounds of {string}, an empty String will be returned.
- * If end <= start an empty String will be returned.
- *
- * str_destroy should not be used on the returned String, as it uses the data from {string}.
- * As the returned String uses the data from {string}, if {string} is destroyed the returned
- * String will be invalid. Use str_copy on the returned String if this is unwanted.
  */
 String str_substring(String string, s64 start, s64 end);
 
 /*!
  * Get a substring of {string} with the leading and trailing whitespace omitted.
- *
- * str_destroy should not be used on the returned String, as it uses the data from {string}.
- * As the returned String uses the data from {string}, if {string} is destroyed the returned
- * String will be invalid. Use str_copy on the returned String if this is unwanted.
  */
 String str_trim(String string);
 
 /*!
  * Get a substring of {string} with the leading whitespace omitted.
- *
- * str_destroy should not be used on the returned String, as it uses the data from {string}.
- * As the returned String uses the data from {string}, if {string} is destroyed the returned
- * String will be invalid. Use str_copy on the returned String if this is unwanted.
  */
 String str_trimLeading(String string);
 
 /*!
  * Get a substring of {string} with the trailing whitespace omitted.
- *
- * str_destroy should not be used on the returned String, as it uses the data from {string}.
- * As the returned String uses the data from {string}, if {string} is destroyed the returned
- * String will be invalid. Use str_copy on the returned String if this is unwanted.
  */
 String str_trimTrailing(String string);
 
@@ -882,16 +829,17 @@ String str_trimTrailing(String string);
  * Returns a substring of {remaining} inclusive from its start to {index} - 1.
  * Sets {remaining} to a substring of {remaining} from {index} + {delimiterLength}.
  *
- * If {index} is -1, {remaining} will be returned and {remaining} will be set to an empty String.
+ * If {index} is -1, {remaining} will be returned and {remaining} will be
+ * set to an errored String with CLibErrorType ERROR_STRING_EXHAUSTED.
  */
 String str_splitAt(String * remaining, s64 index, s64 delimiterLength);
 
 /*!
- * Returns a substring of {remaining} from its start to the first occurence of {find}.
- * Sets {remaining} to a substring of {remaining} after the first occurence of {find}.
+ * Returns a substring of {remaining} from its start to the first occurence of {delimiter}.
+ * Sets {remaining} to a substring of {remaining} after the first occurence of {delimiter}.
  *
- * If {find} is not found, {remaining} will be returned and {remaining} will be set to an empty String.
- * Therefore, if {remaining} is empty, there are no more occurences of {find} in the String.
+ * If {delimiter} is not found, {remaining} will be returned and {remaining} will
+ * be set to an errored String with CLibErrorType ERROR_STRING_EXHAUSTED.
  */
 String str_splitAtChar(String *remaining, char delimiter);
 
@@ -899,8 +847,8 @@ String str_splitAtChar(String *remaining, char delimiter);
  * Returns a substring of {remaining} from its start to the first occurence of {delimiter}.
  * Sets {remaining} to a substring of {remaining} after the first occurence of {delimiter}.
  *
- * If {delimiter} is not found, {remaining} will be returned and {remaining} will be set to an empty String.
- * Therefore, if {remaining} is empty, there are no more occurences of {delimiter} in the String.
+ * If {delimiter} is not found, {remaining} will be returned and {remaining} will
+ * be set to an errored String with CLibErrorType ERROR_STRING_EXHAUSTED.
  */
 String str_splitAtStr(String *remaining, String delimiter);
 
@@ -908,8 +856,8 @@ String str_splitAtStr(String *remaining, String delimiter);
  * Returns a substring of {remaining} from its start to the first occurence of {delimiter}.
  * Sets {remaining} to a substring of {remaining} after the first occurence of {delimiter}.
  *
- * If {delimiter} is not found, {remaining} will be returned and {remaining} will be set to an empty String.
- * Therefore, if {remaining} is empty, there are no more occurences of {delimiter} in the String.
+ * If {delimiter} is not found, {remaining} will be returned and {remaining} will
+ * be set to an errored String with CLibErrorType ERROR_STRING_EXHAUSTED.
  */
 String str_splitAtC(String * remaining, char * delimiter);
 
@@ -920,9 +868,9 @@ String str_splitAtC(String * remaining, char * delimiter);
 //
 
 /*!
- * Load a file into a String.
+ * Load the contents of the file {filename} into a String.
  *
- * Will return an empty String on failure.
+ * The returned String should be destroyed when it is no longer in use.
  */
 String str_readFile(char *filename);
 
@@ -937,12 +885,12 @@ String str_readFile(char *filename);
  */
 typedef struct Builder {
     /*!
-     * The buffer to store the String as it is built.
+     * The buffer to store the data as it is built.
      */
     Buffer buffer;
 
     /*!
-     * The length of the built string.
+     * The length of the built data.
      */
     s64 length;
 } Builder;
@@ -950,7 +898,8 @@ typedef struct Builder {
 /*!
  * Creates a new Builder with initial capacity {initialSize}.
  *
- * Will return a Builder with capacity 0 on error or if {initialSize} is 0.
+ * Only the returned Builder itself, OR any Buffer or String constructed
+ * using the returned Builder should be free'd, as they share the same data.
  */
 Builder builder_create(s64 initialSize);
 
@@ -970,9 +919,10 @@ bool builder_isErrored(Builder builder);
 bool builder_isValid(Builder builder);
 
 /*!
- * Destroy {builder}, and any data constructed within {builder}.
+ * Destroy {builder}, and any data constructed using {builder}.
  *
- * As {builder}->string and {builder} share the same data, only one of these should be destroyed.
+ * Only the {builder} itself, OR any Buffer or String constructed
+ * using {builder} should be free'd, as they share the same data.
  */
 void builder_destroy(Builder * builder);
 
@@ -987,22 +937,25 @@ String builder_str(Builder builder);
 Buffer builder_buf(Builder builder);
 
 /*!
- * Returns a copy of the String in {builder}.
+ * Returns a copy of the contents of {builder} as a String.
  */
 String builder_strCopy(Builder builder);
 
 /*!
+ * Returns a copy of the contents of {builder} as a Buffer.
+ */
+Buffer builder_bufCopy(Builder builder);
+
+/*!
  * Sets the capacity of {builder} to {capacity}.
  *
- * Returns whether setting the capacity was successful.
+ * If {builder} contains more than {capacity} characters set, then this operation will error.
  */
 CLibErrorType builder_setCapacity(Builder * builder, s64 capacity);
 
 /*!
- * If {requiredCapacity} is greater than the current capacity of {builder}, the
- * capacity of {builder} will be attempted to be increased to the next power of 2.
- *
- * Returns whether it was able to ensure that {builder} has a capacity of at least {requiredCapacity}.
+ * If the capacity of {builder} is smaller than {requiredCapacity},
+ * then the capacity of {builder} will be increased.
  */
 CLibErrorType builder_ensureCapacity(Builder * builder, s64 requiredCapacity);
 
@@ -1014,35 +967,27 @@ CLibErrorType builder_ensureCapacity(Builder * builder, s64 requiredCapacity);
 CLibErrorType builder_trimToLength(Builder * builder);
 
 /*!
- * Will append {character} to {builder}.
- *
- * Returns whether appending {character} was succesful.
+ * Append {character} to {builder}.
  */
 CLibErrorType builder_appendChar(Builder * builder, char character);
 
 /*!
- * Will append {string} to {builder}.
- *
- * Returns whether appending {string} was successful.
+ * Append {string} to {builder}.
  */
 CLibErrorType builder_appendStr(Builder * builder, String string);
 
 /*!
- * Append the contents of {buffer} to {builder}.
- *
- * Returns whether appending {buffer} was successful.
+ * Append {buffer} to {builder}.
  */
 CLibErrorType builder_appendBuf(Builder * builder, Buffer buffer);
 
 /*!
- * Will append {string} to {builder}.
- *
- * Returns whether appending {string} was successful.
+ * Append {string} to {builder}.
  */
 CLibErrorType builder_appendC(Builder * builder, char * string);
 
 /*!
- * Will append a substring of {string} between {start} and {end} to {builder}.
+ * Append a substring of {string} between {start} and {end} to {builder}.
  */
 CLibErrorType builder_appendSubstring(Builder * builder, String string, s64 start, s64 end);
 
@@ -1062,15 +1007,11 @@ u32 utf8_toCodepoint(String * remaining);
 
 /*!
  * Construct a UTF-8 String from the character in the Unicode codepoint {codepoint}.
- *
- * Will return an empty String on failure.
  */
 String utf8_fromCodepoint(u32 codepoint);
 
 /*!
  * Append the Unicode codepoint {codepoint} in UTF-8 into {builder}.
- *
- * Returns whether it was successful.
  */
 CLibErrorType utf8_appendCodepoint(Builder * builder, u32 codepoint);
 
@@ -1084,15 +1025,11 @@ u32 utf16le_toCodepoint(String * remaining);
 
 /*!
  * Construct a UTF-16LE String containing the codepoint {codepoint}.
- *
- * Will return an empty String on failure.
  */
 String utf16le_fromCodepoint(u32 codepoint);
 
 /*!
  * Append the Unicode codepoint {codepoint} in UTF-16LE into {builder}.
- *
- * Returns whether it was successful.
  */
 CLibErrorType utf16le_appendCodepoint(Builder * builder, u32 codepoint);
 
@@ -1103,29 +1040,29 @@ CLibErrorType utf16le_appendCodepoint(Builder * builder, u32 codepoint);
 //
 
 /*!
- * Returns a C string representation of {error}.
+ * Returns a null-terminated string explaining {error}.
  *
  * The resulting string should not be free'd.
  */
 char * errtype_c(CLibErrorType errorType);
 
 /*!
- * Returns a String representation of {error}.
+ * Returns a String explaining {error}.
  *
- * The resultant String should not be free'd.
+ * The resultant String should not be destroyed.
  */
 String errtype_str(CLibErrorType errorType);
 
 /*!
- * Returns an s64 number <= -1, which contains the error and errnum,
+ * Returns an s64 number < 0 that contains the error and errnum,
  * unless ERROR_NONE is passed, in which case 0 will be returned.
  */
 s64 err_create(CLibErrorType errorType, int errnum);
 
 /*!
- * Convert the s64 error given by err_create into a String.
+ * Get the reason String for the s64 error given by err_create.
  *
- * The resultant String should be free'd after use.
+ * The returned String should be free'd after use.
  */
 String err_reason(s64 error_s64);
 

@@ -95,6 +95,35 @@ bool test_builder_strCopy() {
     return true;
 }
 
+bool test_builder_bufCopy() {
+    Buffer expected = buf_createUsingC("Apple pie is super nice man");
+    Builder builder = builder_create(0);
+    Buffer builtBuffer;
+    {
+        builder_appendC(&builder, "Apple");
+        builder_appendChar(&builder, ' ');
+        builder_appendC(&builder, "pie");
+        builder_appendChar(&builder, ' ');
+        builder_appendC(&builder, "is");
+        builder_appendChar(&builder, ' ');
+        builder_appendC(&builder, "super");
+        builder_appendChar(&builder, ' ');
+        builder_appendC(&builder, "nice");
+        builder_appendChar(&builder, ' ');
+        builder_appendC(&builder, "man");
+
+        builtBuffer = builder_bufCopy(builder);
+
+        assert(buf_equals(builtBuffer, expected));
+        assert(buf_equals(builder_buf(builder), builtBuffer));
+        assert(builder_buf(builder).start != builtBuffer.start);
+    }
+    builder_destroy(&builder);
+    buf_destroy(&builtBuffer);
+
+    return true;
+}
+
 bool test_builder_setCapacity() {
     Builder builder = builder_create(32);
     builder_appendC(&builder, "Testing testing, 1, 2, 3");
@@ -261,6 +290,7 @@ void test_Builder(int * failures, int * successes) {
     test(builder_str);
     test(builder_buf);
     test(builder_strCopy);
+    test(builder_bufCopy);
     test(builder_setCapacity);
     test(builder_ensureCapacity);
     test(builder_trimToLength);

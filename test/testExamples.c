@@ -25,7 +25,7 @@ bool test_String_example() {
             // Print out the result
             char * keyValue_nullTerminated = str_c_destroy(&keyValue);
             {
-                printf("%s\n", keyValue_nullTerminated);
+                // printf("%s\n", keyValue_nullTerminated);
             }
             free(keyValue_nullTerminated);
         }

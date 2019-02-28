@@ -328,20 +328,6 @@ bool test_str_c() {
     return true;
 }
 
-bool test_str_toCString() {
-    String johnDoe = str_createCopy("John Doe");
-    char * nullTerminated = str_toCString(johnDoe);
-    {
-        assertStrValid(johnDoe);
-
-        assert(strcmp("John Doe", nullTerminated) == 0);
-    }
-    str_destroy(&johnDoe);
-    free(nullTerminated);
-
-    return true;
-}
-
 bool test_str_format() {
     String formatted = str_format("%s is %d%% good for you", "Apple Pie", 50);
     String expected = str_createCopy("Apple Pie is 50% good for you");
@@ -557,6 +543,7 @@ bool test_str_indexOfStr() {
     String littleFinger = str_createCopy("Little Finger");
     String jon = str_createCopy("Jon");
     String arya = str_createCopyOfLength("\0Arya", 5);
+    String empty = str_createEmpty();
     {
         assertStrValid(names);
         assertStrValid(littleFinger);
@@ -566,23 +553,29 @@ bool test_str_indexOfStr() {
         assert(str_indexOfStr(names, littleFinger) == 0);
         assert(str_indexOfStr(names, jon) == 20);
         assert(str_indexOfStr(names, arya) == 37);
+        assert(str_indexOfStr(names, empty) == 1);
+        assert(str_indexOfStr(empty, empty) == -1);
     }
     str_destroy(&names);
     str_destroy(&littleFinger);
     str_destroy(&jon);
     str_destroy(&arya);
+    str_destroy(&empty);
 
     return true;
 }
 
 bool test_str_indexOfC() {
     String names = str_createCopyOfLength("Little Finger\0Mance\0Jon\0Tyrrion\0Sansa\0Arya", 42);
+    String empty = str_createEmpty();
     {
         assertStrValid(names);
 
         assert(str_indexOfC(names, "Little Finger") == 0);
         assert(str_indexOfC(names, "Jon") == 20);
         assert(str_indexOfC(names, "Arya") == 38);
+        assert(str_indexOfC(names, "") == 1);
+        assert(str_indexOfC(empty, "") == -1);
     }
     str_destroy(&names);
 
@@ -607,6 +600,7 @@ bool test_str_indexOfStrAfter() {
     String names = str_createCopyOfLength("Little Finger\0Arya\0Little Finger\0Tyrrion\0Sansa\0Arya", 51);
     String littleFinger = str_createCopy("Little Finger");
     String arya = str_createCopyOfLength("\0Arya", 5);
+    String empty = str_createEmpty();
     {
         assertStrValid(names);
         assertStrValid(littleFinger);
@@ -618,17 +612,21 @@ bool test_str_indexOfStrAfter() {
         assert(str_indexOfStrAfter(names, littleFinger, 1) == 19);
         assert(str_indexOfStrAfter(names, arya, 15) == 46);
 
-        assert(str_indexOfStrAfter(names, str_createEmpty(), 5) == -1);
+        assert(str_indexOfStrAfter(names, empty, 0) == 1);
+        assert(str_indexOfStrAfter(empty, empty, 0) == -1);
+        assert(str_indexOfStrAfter(names, empty, 5) == 6);
     }
     str_destroy(&names);
     str_destroy(&littleFinger);
     str_destroy(&arya);
+    str_destroy(&empty);
 
     return true;
 }
 
 bool test_str_indexOfCAfter() {
     String names = str_createCopyOfLength("Little Finger\0Arya\0Little Finger\0Tyrrion\0Sansa\0Arya", 51);
+    String empty = str_createEmpty();
     {
         assertStrValid(names);
 
@@ -638,9 +636,12 @@ bool test_str_indexOfCAfter() {
         assert(str_indexOfCAfter(names, "Little Finger", 1) == 19);
         assert(str_indexOfCAfter(names, "Arya", 15) == 47);
 
-        assert(str_indexOfCAfter(names, "", 5) == -1);
+        assert(str_indexOfCAfter(names, "", 0) == 1);
+        assert(str_indexOfCAfter(empty, "", 0) == -1);
+        assert(str_indexOfCAfter(names, "", 5) == 6);
     }
     str_destroy(&names);
+    str_destroy(&empty);
 
     return true;
 }
@@ -664,6 +665,7 @@ bool test_str_lastIndexOfStr() {
     String littleFinger = str_createCopy("Little Finger");
     String tyrrion = str_createCopy("Tyrrion");
     String arya = str_createCopyOfLength("\0Arya", 5);
+    String empty = str_createEmpty();
     {
         assertStrValid(names);
         assertStrValid(littleFinger);
@@ -673,6 +675,8 @@ bool test_str_lastIndexOfStr() {
         assert(str_lastIndexOfStr(names, littleFinger) == 19);
         assert(str_lastIndexOfStr(names, tyrrion) == 33);
         assert(str_lastIndexOfStr(names, arya) == 46);
+        assert(str_lastIndexOfStr(names, empty) == -1);
+        assert(str_lastIndexOfStr(empty, empty) == -1);
     }
     str_destroy(&names);
     str_destroy(&littleFinger);
@@ -684,12 +688,15 @@ bool test_str_lastIndexOfStr() {
 
 bool test_str_lastIndexOfC() {
     String names = str_createCopyOfLength("Little Finger\0Arya\0Little Finger\0Tyrrion\0Sansa\0Arya", 51);
+    String empty = str_createEmpty();
     {
         assertStrValid(names);
 
         assert(str_lastIndexOfC(names, "Little Finger") == 19);
         assert(str_lastIndexOfC(names, "Tyrrion") == 33);
         assert(str_lastIndexOfC(names, "Arya") == 47);
+        assert(str_lastIndexOfC(names, "") == -1);
+        assert(str_lastIndexOfC(empty, "") == -1);
     }
     str_destroy(&names);
 
@@ -718,6 +725,7 @@ bool test_str_containsStr() {
     String jess = str_createCopy("Jess");
     String withNull = str_createCopyOfLength("ff\0B", 4);
     String differentAfterNull = str_createCopyOfLength("ff\0A", 4);
+    String empty = str_createEmpty();
     {
         assertStrValid(jeff);
         assertStrValid(bob);
@@ -730,18 +738,22 @@ bool test_str_containsStr() {
         assert(!str_containsStr(bob, jeff));
         assert(str_containsStr(jeff, withNull));
         assert(!str_containsStr(jeff, differentAfterNull));
+        assert(!str_containsStr(jeff, empty));
+        assert(!str_containsStr(empty, empty));
     }
     str_destroy(&jeff);
     str_destroy(&bob);
     str_destroy(&jess);
     str_destroy(&withNull);
     str_destroy(&differentAfterNull);
+    str_destroy(&empty);
 
     return true;
 }
 
 bool test_str_containsC() {
     String jeff = str_createCopyOfLength("Jeff\0Bob", 8);
+    String empty = str_createEmpty();
     {
         assertStrValid(jeff);
 
@@ -750,8 +762,11 @@ bool test_str_containsC() {
         assert(!str_containsC(str_create("Bob"), "Jeff"));
         assert(str_containsC(jeff, "ff"));
         assert(!str_containsC(jeff, "Ba"));
+        assert(!str_containsC(jeff, ""));
+        assert(!str_containsC(empty, ""));
     }
     str_destroy(&jeff);
+    str_destroy(&empty);
 
     return true;
 }
@@ -1215,7 +1230,6 @@ void test_String(int * failures, int * successes) {
     test(str_isOwnAllocation);
 
     test(str_c);
-    test(str_toCString);
     test(str_format);
     test(str_vformat);
     test(str_formatC);
